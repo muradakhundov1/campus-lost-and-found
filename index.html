@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Campus Lost & Found</title>
+  <meta name="description" content="Campus Lost & Found — One centralized, trustworthy platform for university lost and found items." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- Device Frame -->
+  <div class="device-wrapper">
+    <div class="device-frame">
+      <!-- Status Bar -->
+      <div class="status-bar">
+        <span class="status-time" id="status-time">9:41</span>
+        <div class="status-icons">
+          <svg width="17" height="12" viewBox="0 0 17 12" fill="none"><rect x="0" y="3" width="3" height="9" rx="1" fill="currentColor" opacity="0.4"/><rect x="4.5" y="2" width="3" height="10" rx="1" fill="currentColor" opacity="0.6"/><rect x="9" y="0.5" width="3" height="11.5" rx="1" fill="currentColor" opacity="0.8"/><rect x="13.5" y="0" width="3" height="12" rx="1" fill="currentColor"/></svg>
+          <svg width="16" height="12" viewBox="0 0 24 12" fill="currentColor"><path d="M1 4C1 2.9 1.9 2 3 2h18c1.1 0 2 .9 2 2v4c0 1.1-.9 2-2 2H3c-1.1 0-2-.9-2-2V4zm1 0v4a1 1 0 001 1h18a1 1 0 001-1V4a1 1 0 00-1-1H3a1 1 0 00-1 1zm3 .5h12v3H5v-3z"/></svg>
+          <svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M6 1a5 5 0 100 10A5 5 0 006 1zM0 6a6 6 0 1112 0A6 6 0 010 6z" opacity="0.3"/><path d="M6 2.5A3.5 3.5 0 116 9a3.5 3.5 0 010-6.5z"/></svg>
+        </div>
+      </div>
+
+      <!-- Screen Container -->
+      <div class="screen-container" id="screen-container">
+        <!-- Screens injected by JS -->
+      </div>
+
+      <!-- Bottom Nav (hidden on auth screens) -->
+      <nav class="bottom-nav" id="bottom-nav" style="display:none">
+        <button class="nav-btn active" data-screen="home" id="nav-home" aria-label="Home">
+          <div class="nav-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          </div>
+          <span>Home</span>
+        </button>
+        <button class="nav-btn" data-screen="search" id="nav-search" aria-label="Search">
+          <div class="nav-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          </div>
+          <span>Search</span>
+        </button>
+        <button class="nav-btn nav-post-btn" data-screen="post" id="nav-post" aria-label="Post Item">
+          <div class="nav-icon post-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          </div>
+          <span>Post</span>
+        </button>
+        <button class="nav-btn" data-screen="messages" id="nav-messages" aria-label="Messages">
+          <div class="nav-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          </div>
+          <span>Messages</span>
+          <span class="nav-badge" id="msg-badge" style="display:none">2</span>
+        </button>
+        <button class="nav-btn" data-screen="profile" id="nav-profile" aria-label="Profile">
+          <div class="nav-icon">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          </div>
+          <span>Profile</span>
+        </button>
+      </nav>
+
+      <!-- Home Indicator -->
+      <div class="home-indicator"></div>
+    </div>
+  </div>
+
+  <!-- Toast Notification -->
+  <div class="toast" id="toast"></div>
+
+  <!-- Modal Overlay -->
+  <div class="modal-overlay" id="modal-overlay" style="display:none"></div>
+  <div class="modal-sheet" id="modal-sheet" style="display:none"></div>
+
+  <script src="data.js"></script>
+  <script src="router.js"></script>
+  <script src="screens-auth.js"></script>
+  <script src="screens-main.js"></script>
+  <script src="screens-claims.js"></script>
+</body>
+</html>
