@@ -1,8 +1,8 @@
 const { z } = require('zod');
-const { query } = require('../../_db');
-const { json, readJson, newId } = require('../../_util');
-const { mapClaimRow } = require('../../_claimMap');
-const { requireUserId } = require('../../_auth');
+const { query } = require('./_db');
+const { json, readJson, newId } = require('./_util');
+const { mapClaimRow } = require('./_claimMap');
+const { requireUserId } = require('./_auth');
 
 async function insertNotification({ userId, type, title, description, timeLabel, screen, claimId, itemId }) {
   const nid = newId('n');
@@ -117,7 +117,7 @@ module.exports = async function handler(req, res) {
         claimId
       ]);
       const updatedItem = (await query('select * from items where id = $1', [itemId])).rows[0];
-      const { mapItem } = require('../../_itemsMap');
+      const { mapItem } = require('./_itemsMap');
 
       return json(res, 201, {
         id: claimId,

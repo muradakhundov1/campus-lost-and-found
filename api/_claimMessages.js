@@ -1,8 +1,8 @@
 const { z } = require('zod');
-const { query } = require('../../_db');
-const { json, readJson, newId } = require('../../_util');
-const { mapMessageRow } = require('../../_claimMap');
-const { requireUserId } = require('../../_auth');
+const { query } = require('./_db');
+const { json, readJson, newId } = require('./_util');
+const { mapMessageRow } = require('./_claimMap');
+const { requireUserId } = require('./_auth');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');

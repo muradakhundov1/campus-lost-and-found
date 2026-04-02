@@ -1,7 +1,7 @@
 const { z } = require('zod');
-const { query } = require('../_db');
-const { json, readJson, newId } = require('../_util');
-const { requireUserId } = require('../_auth');
+const { query } = require('./_db');
+const { json, readJson, newId } = require('./_util');
+const { requireUserId } = require('./_auth');
 
 const LABELS = {
   warning: 'Warning issued to user',

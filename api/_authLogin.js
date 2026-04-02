@@ -1,7 +1,7 @@
 const bcrypt = require('bcryptjs');
 const { z } = require('zod');
-const { query } = require('../_db');
-const { json, readJson, token, authToken } = require('../_util');
+const { query } = require('./_db');
+const { json, readJson, token, authToken } = require('./_util');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');

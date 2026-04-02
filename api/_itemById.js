@@ -1,7 +1,7 @@
-const { query } = require('../_db');
-const { json } = require('../_util');
-const { mapItem } = require('../_itemsMap');
-const { requireUserId } = require('../_auth');
+const { query } = require('./_db');
+const { json } = require('./_util');
+const { mapItem } = require('./_itemsMap');
+const { requireUserId } = require('./_auth');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -45,7 +45,7 @@ module.exports = async function handler(req, res) {
     const userId = await requireUserId(req, res);
     if (!userId) return;
 
-    const { readJson } = require('../_util');
+    const { readJson } = require('./_util');
     let body;
     try {
       body = await readJson(req);

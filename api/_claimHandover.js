@@ -1,9 +1,9 @@
 const { z } = require('zod');
-const { query } = require('../../_db');
-const { json, readJson } = require('../../_util');
-const { mapClaimRow } = require('../../_claimMap');
-const { mapItem } = require('../../_itemsMap');
-const { requireUserId } = require('../../_auth');
+const { query } = require('./_db');
+const { json, readJson } = require('./_util');
+const { mapClaimRow } = require('./_claimMap');
+const { mapItem } = require('./_itemsMap');
+const { requireUserId } = require('./_auth');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
