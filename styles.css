@@ -67,19 +67,43 @@
   --shadow-sm: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
   --shadow-md: 0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.04);
   --shadow-lg: 0 10px 30px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
+
+  /* iOS / notched devices — used with viewport-fit=cover */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
 }
 
-html, body {
+html {
+  height: 100%;
+  height: 100dvh;
+  overflow: hidden;
+}
+
+body {
   font-family: var(--font);
   background: var(--bg);
-  min-height: 100dvh;
+  margin: 0;
   -webkit-font-smoothing: antialiased;
   overflow: hidden;
+  /* Single column: main + bottom nav never exceeds one visual viewport */
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100vh;
+  height: 100dvh;
+  min-height: -webkit-fill-available;
+  max-height: 100dvh;
+  padding-left: var(--safe-left);
+  padding-right: var(--safe-right);
 }
 
 /* ===== SCREEN CONTAINER ===== */
 .screen-container {
-  height: 100dvh;
+  flex: 1 1 auto;
+  min-height: 0;
   width: 100%;
   overflow: hidden;
   position: relative;
@@ -116,7 +140,7 @@ html, body {
   display: flex;
   align-items: center;
   gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-4);
+  padding: calc(var(--sp-3) + var(--safe-top)) var(--sp-4) var(--sp-3);
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-light);
   position: sticky;
@@ -158,8 +182,9 @@ html, body {
   align-items: stretch;
   background: rgba(255,255,255,0.95);
   backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   border-top: 1px solid var(--border-light);
-  padding: 8px 0 0;
+  padding: 8px 0 calc(8px + var(--safe-bottom));
   flex-shrink: 0;
   position: relative;
   z-index: 100;
@@ -174,7 +199,7 @@ html, body {
   background: none;
   border: none;
   cursor: pointer;
-  padding: 4px 4px 10px;
+  padding: 4px 4px 6px;
   color: var(--text-tertiary);
   font-size: 10px;
   font-weight: 500;
@@ -438,7 +463,7 @@ html, body {
 /* ===== TOAST ===== */
 .toast {
   position: fixed;
-  bottom: 120px;
+  bottom: calc(96px + var(--safe-bottom));
   left: 50%; transform: translateX(-50%);
   background: #0F172A;
   color: white;
@@ -465,12 +490,15 @@ html, body {
   position: fixed;
   bottom: 0; left: 50%; transform: translateX(-50%);
   width: min(100vw, 560px);
+  max-width: 100%;
   background: white;
   border-radius: 24px 24px 0 0;
   z-index: 900;
-  padding: 0 0 32px;
+  padding: 0 0 calc(32px + var(--safe-bottom));
+  padding-left: max(0px, var(--safe-left));
+  padding-right: max(0px, var(--safe-right));
   box-shadow: 0 -8px 40px rgba(0,0,0,0.2);
-  max-height: 80vh;
+  max-height: min(80vh, 100dvh - var(--safe-top));
   overflow-y: auto;
 }
 .modal-handle {
@@ -487,7 +515,7 @@ html, body {
   display: flex; flex-direction: column;
   align-items: center; justify-content: center;
   gap: var(--sp-6); color: white;
-  padding: var(--sp-8);
+  padding: calc(var(--sp-8) + var(--safe-top)) var(--sp-8) calc(var(--sp-8) + var(--safe-bottom));
 }
 .splash-logo { width: 88px; height: 88px; background: transparent; border-radius: 0; display: flex; align-items: center; justify-content: center; box-shadow: none; }
 .splash-logo svg { stroke: white; }
@@ -500,7 +528,19 @@ html, body {
 .splash-dot.active { background: white; width: 20px; }
 
 /* ===== AUTH SCREENS ===== */
-.auth-screen { padding: var(--sp-6) var(--sp-5); overflow-y: auto; }
+.auth-screen {
+  padding: calc(var(--sp-6) + var(--safe-top)) var(--sp-5) var(--sp-6);
+  overflow-y: auto;
+}
+.auth-screen.tight-top {
+  padding-top: calc(24px + var(--safe-top));
+}
+.auth-screen.otp-top {
+  padding-top: calc(32px + var(--safe-top));
+}
+.auth-screen.scroll-y {
+  overflow-y: auto;
+}
 .auth-logo { width: 56px; height: 56px; background: transparent; border-radius: 0; display: flex; align-items: center; justify-content: center; margin-bottom: var(--sp-5); }
 .auth-logo svg { stroke: var(--primary); }
 .auth-logo img { width: 120px; height: 44px; object-fit: contain; }
@@ -526,7 +566,7 @@ html, body {
 
 /* ===== HOME SCREEN ===== */
 .home-header {
-  padding: var(--sp-4) var(--sp-4) var(--sp-3);
+  padding: calc(var(--sp-4) + var(--safe-top)) var(--sp-4) var(--sp-3);
   background: var(--bg-card);
   border-bottom: 1px solid var(--border-light);
 }
@@ -728,7 +768,7 @@ html, body {
 .timeline-date { font-size: var(--text-xs); color: var(--text-tertiary); }
 
 /* ===== CHAT SCREEN ===== */
-.chat-header { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4); border-bottom: 1px solid var(--border-light); background: white; }
+.chat-header { display: flex; align-items: center; gap: var(--sp-3); padding: calc(var(--sp-3) + var(--safe-top)) var(--sp-4) var(--sp-3); border-bottom: 1px solid var(--border-light); background: white; }
 .chat-header-info { flex: 1; }
 .chat-header-name { font-size: var(--text-base); font-weight: 700; color: var(--text-primary); }
 .chat-header-status { font-size: var(--text-xs); color: var(--success); font-weight: 500; }
@@ -799,7 +839,7 @@ html, body {
 
 /* ===== PROFILE SCREEN ===== */
 .profile-header {
-  padding: var(--sp-6) var(--sp-5) var(--sp-5);
+  padding: calc(var(--sp-6) + var(--safe-top)) var(--sp-5) var(--sp-5);
   background: linear-gradient(180deg, var(--primary) 0%, var(--primary-dark) 100%);
   text-align: center; color: white;
 }
@@ -878,7 +918,12 @@ html, body {
 .text-secondary { color: var(--text-secondary); }
 .text-danger { color: var(--danger); }
 .text-success { color: var(--success); }
-.has-bottom-pad { padding-bottom: 100px; }
+/* Scroll lists sit above bottom tab bar (flex layout); small inset for last row */
+.has-bottom-pad { padding-bottom: max(20px, var(--sp-4)); }
+
+.auth-screen.has-bottom-pad {
+  padding-bottom: calc(var(--sp-8) + var(--safe-bottom));
+}
 
 .spinner {
   width: 40px; height: 40px;

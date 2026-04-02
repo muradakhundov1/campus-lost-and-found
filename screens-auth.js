@@ -87,7 +87,7 @@ Screens.onboarding = () => {
 Screens.login = () => {
   const s = makeScreen('login');
   s.innerHTML = `
-    <div class="auth-screen has-bottom-pad" style="padding-top:24px">
+    <div class="auth-screen has-bottom-pad tight-top">
       <div class="lang-toggle-row">
         <button class="lang-pill ${Lang.current==='en'?'active':''}" type="button" id="lang-en">EN</button>
         <button class="lang-pill ${Lang.current==='az'?'active':''}" type="button" id="lang-az">AZ</button>
@@ -158,7 +158,7 @@ Screens.login = () => {
 Screens.register = () => {
   const s = makeScreen('register');
   s.innerHTML = `
-    <div class="auth-screen has-bottom-pad" style="padding-top:24px;overflow-y:auto">
+    <div class="auth-screen has-bottom-pad tight-top scroll-y">
       <div class="lang-toggle-row">
         <button class="lang-pill ${Lang.current==='en'?'active':''}" type="button" id="lang-en">EN</button>
         <button class="lang-pill ${Lang.current==='az'?'active':''}" type="button" id="lang-az">AZ</button>
@@ -278,7 +278,7 @@ Screens.otp = (ctx) => {
   const s = makeScreen('otp');
   // OTP is not implemented yet (would require SMS/email provider). Keep screen but clearly message.
   s.innerHTML = `
-    <div class="auth-screen" style="padding-top:32px">
+    <div class="auth-screen otp-top">
       <div class="auth-logo">
         <img src="assets/bhos-logo.png" alt="Baku Higher Oil School logo" />
       </div>
