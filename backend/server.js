@@ -186,7 +186,7 @@ app.post('/api/auth/register', (req, res) => {
   const safeUser = db
     .prepare('SELECT id,name,email,phone,role,avatar,verified,suspended,joined_date,department,year,post_count,resolved_count FROM users WHERE id = ?')
     .get(newId);
-  res.status(201).json({ token: t, user: safeUser });
+  res.status(200).json({ token: t, user: safeUser });
 });
 
 app.get('/api/me', requireAuth, (req, res) => res.json({ user: req.user }));

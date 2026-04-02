@@ -592,8 +592,7 @@ Screens['finder-response'] = (ctx) => {
       App.toast(Lang.t('responseOk'));
       setTimeout(() => App.navigate('item-detail', { itemId: item.id }), 800);
     } catch (e) {
-      if (e.status === 401) App.toast(Lang.t('signInShort'));
-      else App.toast(Lang.t('toastClaimFailed'));
+      App.toastClaimApiError(e);
     }
   });
   return s;

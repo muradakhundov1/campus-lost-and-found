@@ -49,9 +49,9 @@ Screens['claim-submit'] = (ctx) => {
     const u = DB.currentUser;
     if (!u?.id) { App.toast(Lang.t('signInShort')); return; }
     const answersPayload = questions.map((q, i) => ({
-      questionId: q.id,
-      question: q.text,
-      answer: answers[i] || '(no answer)'
+      ...(q.id != null && q.id !== '' ? { questionId: String(q.id) } : {}),
+      question: (q.text && String(q.text).trim()) || '(question)',
+      answer: (answers[i] != null && String(answers[i]).trim()) || '(no answer)'
     }));
     const notes = s.querySelector('#claim-notes').value.trim();
     if (notes) answersPayload.push({ questionId: 'notes', question: 'Additional notes', answer: notes });
@@ -61,8 +61,7 @@ Screens['claim-submit'] = (ctx) => {
       App.toast(Lang.t('claimOk'));
       setTimeout(() => App.navigate('item-detail', { itemId: item.id }), 800);
     } catch (e) {
-      if (e.status === 401) App.toast(Lang.t('signInShort'));
-      else App.toast(Lang.t('toastClaimFailed'));
+      App.toastClaimApiError(e);
     }
   });
   return s;

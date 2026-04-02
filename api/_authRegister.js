@@ -51,7 +51,8 @@ module.exports = async function handler(req, res) {
 
   const t = token();
   await query('insert into sessions (token,user_id,created_at,expires_at) values ($1,$2,now(),null)', [t, id]);
-  return json(res, 201, {
+  // Use 200 like login so clients/proxies treat the response the same (body must include token + user).
+  return json(res, 200, {
     token: t,
     user: {
       id,

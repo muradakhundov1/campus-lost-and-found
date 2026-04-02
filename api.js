@@ -47,10 +47,19 @@ async function apiFetch(path, { method = 'GET', body, auth = true } = {}) {
       err.hint = 'not_json';
       throw err;
     }
-  } else if (res.ok) {
-    // 2xx with no body (e.g. 204, or some CDNs/proxies stripping JSON on 201).
-    // Do not throw: the old empty_response path broke success when the log showed 200 but the body was empty.
-    data = {};
+  } else if (res.ok && !text) {
+    // Empty 2xx: `{}` was breaking login/register — unwrapAuthPayload saw no token/user and showed
+    // "signup returned OK but no token". Auth routes must return JSON; keep data null so unwrap fails clearly.
+    if (res.status === 204 || res.status === 205) {
+      data = {};
+    } else if (method === 'GET' || method === 'HEAD') {
+      data = null;
+    } else if (path.includes('/auth/')) {
+      data = null;
+    } else {
+      // POST/PATCH/PUT to other APIs (e.g. claims) — tolerate empty body from some proxies
+      data = {};
+    }
   }
   if (!res.ok) {
     const err = new Error(data?.error || 'request_failed');
@@ -66,10 +75,22 @@ async function apiFetch(path, { method = 'GET', body, auth = true } = {}) {
 
 /** Normalize login/register JSON (handles minor API shape differences). */
 function unwrapAuthPayload(raw) {
-  if (!raw || typeof raw !== 'object') return null;
-  const token = raw.token ?? raw.access_token ?? raw.accessToken;
-  const user = raw.user ?? raw.data?.user ?? raw.profile;
-  if (token && user && typeof user === 'object') return { token, user };
+  if (raw == null || typeof raw !== 'object') return null;
+  const nested =
+    raw.data && typeof raw.data === 'object' && !Array.isArray(raw.data) && (raw.data.token || raw.data.user || raw.data.access_token)
+      ? raw.data
+      : raw;
+  const tokenVal = nested.token ?? nested.access_token ?? nested.accessToken;
+  const user = nested.user ?? nested.profile;
+  if (
+    tokenVal &&
+    user != null &&
+    typeof user === 'object' &&
+    user !== null &&
+    !Array.isArray(user)
+  ) {
+    return { token: tokenVal, user };
+  }
   return null;
 }
 

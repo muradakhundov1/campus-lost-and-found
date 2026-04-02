@@ -344,8 +344,9 @@ const I18N = {
     toastRegDb: 'Registration failed. Check that the database is set up, then try again.',
     toastApiGeneric:
       'Could not complete the request. Check your connection and try again.',
-    toastClaimFailed:
-      'Could not submit your claim. Try again, or sign in if your session expired.',
+    toastClaimFailed: 'Could not submit your claim. Please try again.',
+    toastClaimOwnItem: 'You cannot claim a response on your own post.',
+    toastClaimNotFound: 'This item could not be found. It may have been removed.',
     back: 'Back',
     ariaLabelHome: 'Home',
     ariaLabelSearch: 'Search',
@@ -696,8 +697,9 @@ const I18N = {
     toastRegDb: 'Qeydiyyat alınmadı. Verilənlər bazasının qurulduğunu yoxlayın.',
     toastApiGeneric:
       'Sorğu tamamlanmadı. İnternet bağlantısını yoxlayın və yenidən cəhd edin.',
-    toastClaimFailed:
-      'Tələb təqdim olunmadı. Yenidən cəhd edin və ya sessiya bitibsə daxil olun.',
+    toastClaimFailed: 'Tələb təqdim olunmadı. Yenidən cəhd edin.',
+    toastClaimOwnItem: 'Öz elanınıza cavab verə bilməzsiniz.',
+    toastClaimNotFound: 'Elan tapılmadı və ya silinib.',
     back: 'Geri',
     ariaLabelHome: 'Əsas səhifə',
     ariaLabelSearch: 'Axtarış',

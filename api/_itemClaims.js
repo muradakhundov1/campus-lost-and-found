@@ -60,11 +60,22 @@ module.exports = async function handler(req, res) {
       body.isFinderResponse = body.isFinderResponse === true || body.isFinderResponse === 'true' || body.isFinderResponse === 1;
     }
 
+    const answerEntry = z.object({
+      questionId: z
+        .union([z.string(), z.number(), z.null()])
+        .optional()
+        .transform((v) => (v == null || v === '' ? undefined : String(v))),
+      question: z
+        .union([z.string(), z.number()])
+        .transform((v) => String(v).trim() || '(question)'),
+      answer: z
+        .union([z.string(), z.number()])
+        .transform((v) => String(v).trim() || '(no answer)')
+    });
+
     const parsed = z
       .object({
-        answers: z
-          .array(z.object({ questionId: z.string().optional(), question: z.string().min(1), answer: z.string().min(1) }))
-          .default([]),
+        answers: z.array(answerEntry).default([]),
         isFinderResponse: z.boolean().optional()
       })
       .safeParse(body);

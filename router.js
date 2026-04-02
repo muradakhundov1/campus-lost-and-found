@@ -197,6 +197,18 @@ const App = {
     setTimeout(() => t.classList.remove('show'), duration);
   },
 
+  /** Map API errors from claim POST to a user-facing toast (see api/_itemClaims.js error codes). */
+  toastClaimApiError(e) {
+    if (e?.status === 401) {
+      App.toast(Lang.t('signInShort'));
+      return;
+    }
+    const code = e?.data?.error;
+    if (code === 'cannot_claim_own_item') App.toast(Lang.t('toastClaimOwnItem'));
+    else if (code === 'not_found') App.toast(Lang.t('toastClaimNotFound'));
+    else App.toast(Lang.t('toastClaimFailed'));
+  },
+
   login(userId) {
     DB.currentUser = DB.getUserById(userId);
     App.navigate('home', {}, false);
