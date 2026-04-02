@@ -36,7 +36,16 @@ async function apiFetch(path, { method = 'GET', body, auth = true } = {}) {
     body: body ? JSON.stringify(body) : undefined
   });
   const text = await res.text();
-  const data = text ? JSON.parse(text) : null;
+  let data = null;
+  if (text) {
+    try {
+      data = JSON.parse(text);
+    } catch {
+      const err = new Error('invalid_json');
+      err.status = res.status;
+      throw err;
+    }
+  }
   if (!res.ok) {
     const err = new Error(data?.error || 'request_failed');
     err.status = res.status;
@@ -51,12 +60,14 @@ const Api = {
 
   async login(identifier, password) {
     const out = await apiFetch('/api/auth/login', { method: 'POST', auth: false, body: { identifier, password } });
+    if (!out?.token || !out.user) throw new Error('bad_login_response');
     setToken(out.token);
     return out.user;
   },
 
   async register(payload) {
     const out = await apiFetch('/api/auth/register', { method: 'POST', auth: false, body: payload });
+    if (!out?.token || !out.user) throw new Error('bad_register_response');
     setToken(out.token);
     return out.user;
   },

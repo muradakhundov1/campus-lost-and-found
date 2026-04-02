@@ -132,13 +132,20 @@ Screens.login = () => {
     const password = s.querySelector('#login-pass').value;
     if (!identifier) { App.toast('Please enter email or phone'); return; }
     if (!password) { App.toast('Please enter password'); return; }
+    let user;
     try {
-      const user = await window.Api.login(identifier, password);
-      DB.currentUser = user;
+      user = await window.Api.login(identifier, password);
+    } catch (e) {
+      App.toast('Sign in failed. Check credentials.');
+      return;
+    }
+    DB.currentUser = user;
+    try {
       App.navigate('home', {}, false);
       App.history = [];
     } catch (e) {
-      App.toast('Sign in failed. Check credentials.');
+      console.error(e);
+      App.toast('Signed in. If the screen is blank, refresh the page.');
     }
   });
 

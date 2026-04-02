@@ -28,6 +28,7 @@ const DB = {
 
   // Compute suggested matches for an item
   getSuggestedMatches(item) {
+    if (!item) return [];
     const opposite = item.type === 'lost' ? 'found' : 'lost';
     const itemDate = new Date(item.date);
     return DB.items.filter(other => {

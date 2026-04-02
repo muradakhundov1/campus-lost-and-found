@@ -32,7 +32,8 @@ Screens.home = () => {
   let suggestedMatches = [];
   myLostItems.forEach(li => { suggestedMatches.push(...DB.getSuggestedMatches(li)); });
   if (suggestedMatches.length === 0) {
-    suggestedMatches = DB.getSuggestedMatches(lostItems[0] || DB.items[0]);
+    const seed = lostItems[0] || foundItems[0] || DB.items[0];
+    if (seed) suggestedMatches = DB.getSuggestedMatches(seed);
   }
   suggestedMatches = [...new Map(suggestedMatches.map(m=>[m.id,m])).values()].slice(0,3);
 
@@ -45,7 +46,7 @@ Screens.home = () => {
             <span>BHOS Lost &amp; Found</span>
           </div>
           <div class="home-greeting-sub">${greeting}</div>
-          <h2>${u.name.split(' ')[0]}</h2>
+          <h2>${String(u.name || 'there').trim().split(/\s+/)[0] || 'there'}</h2>
         </div>
         <div style="display:flex;gap:8px">
           <button class="icon-btn" onclick="App.navigate('notifications')" aria-label="Notifications" style="position:relative">
