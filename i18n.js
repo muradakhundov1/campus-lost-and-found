@@ -342,6 +342,10 @@ const I18N = {
     toastRegBadResponse:
       'Sign-up returned OK but the app did not get token or user JSON. Check that requests go to your API (not a static page), or try again.',
     toastRegDb: 'Registration failed. Check that the database is set up, then try again.',
+    toastApiGeneric:
+      'Could not complete the request. Check your connection and try again.',
+    toastClaimFailed:
+      'Could not submit your claim. Try again, or sign in if your session expired.',
     back: 'Back',
     ariaLabelHome: 'Home',
     ariaLabelSearch: 'Search',
@@ -690,6 +694,10 @@ const I18N = {
     toastRegBadResponse:
       'Server OK cavabı verdi, amma tətbiq token və ya istifadəçi məlumatı almadı. Sorğuların API-ya getdiyini yoxlayın və ya yenidən cəhd edin.',
     toastRegDb: 'Qeydiyyat alınmadı. Verilənlər bazasının qurulduğunu yoxlayın.',
+    toastApiGeneric:
+      'Sorğu tamamlanmadı. İnternet bağlantısını yoxlayın və yenidən cəhd edin.',
+    toastClaimFailed:
+      'Tələb təqdim olunmadı. Yenidən cəhd edin və ya sessiya bitibsə daxil olun.',
     back: 'Geri',
     ariaLabelHome: 'Əsas səhifə',
     ariaLabelSearch: 'Axtarış',

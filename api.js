@@ -47,10 +47,10 @@ async function apiFetch(path, { method = 'GET', body, auth = true } = {}) {
       err.hint = 'not_json';
       throw err;
     }
-  } else if (res.ok && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
-    const err = new Error('empty_response');
-    err.status = res.status;
-    throw err;
+  } else if (res.ok) {
+    // 2xx with no body (e.g. 204, or some CDNs/proxies stripping JSON on 201).
+    // Do not throw: the old empty_response path broke success when the log showed 200 but the body was empty.
+    data = {};
   }
   if (!res.ok) {
     const err = new Error(data?.error || 'request_failed');

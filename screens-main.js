@@ -346,7 +346,7 @@ Screens['item-detail'] = (ctx) => {
       App.toast(Lang.t('postDeleted'));
       setTimeout(() => App.navigate('home', {}, false), 600);
     } catch (e) {
-      App.toast(Lang.t('toastRegDb'));
+      App.toast(Lang.t('toastApiGeneric'));
     }
   };
   window.adminRemovePost = async (itemId) => {
@@ -356,7 +356,7 @@ Screens['item-detail'] = (ctx) => {
       App.toast(Lang.t('postRemovedAdmin'));
       App.navigate('item-detail', { itemId });
     } catch (e) {
-      App.toast(Lang.t('toastRegDb'));
+      App.toast(Lang.t('toastApiGeneric'));
     }
   };
   return s;
@@ -522,7 +522,7 @@ Screens['create-post'] = (ctx) => {
       setTimeout(() => App.navigate('item-detail', { itemId: item.id }), 600);
     } catch (e) {
       if (e.status === 401) App.toast(Lang.t('signInShort'));
-      else App.toast(Lang.t('toastRegDb'));
+      else App.toast(Lang.t('toastApiGeneric'));
     }
   });
   return s;
@@ -593,7 +593,7 @@ Screens['finder-response'] = (ctx) => {
       setTimeout(() => App.navigate('item-detail', { itemId: item.id }), 800);
     } catch (e) {
       if (e.status === 401) App.toast(Lang.t('signInShort'));
-      else App.toast(Lang.t('toastRegDb'));
+      else App.toast(Lang.t('toastClaimFailed'));
     }
   });
   return s;

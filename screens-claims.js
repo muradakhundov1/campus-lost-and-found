@@ -62,7 +62,7 @@ Screens['claim-submit'] = (ctx) => {
       setTimeout(() => App.navigate('item-detail', { itemId: item.id }), 800);
     } catch (e) {
       if (e.status === 401) App.toast(Lang.t('signInShort'));
-      else App.toast(Lang.t('toastRegDb'));
+      else App.toast(Lang.t('toastClaimFailed'));
     }
   });
   return s;
@@ -120,7 +120,7 @@ Screens['claim-review'] = (ctx) => {
       renderClaims();
       App.toast(isLostItem ? Lang.t('responseAcceptedChat') : Lang.t('claimApprovedChat'));
     } catch (e) {
-      App.toast(Lang.t('toastRegDb'));
+      App.toast(Lang.t('toastApiGeneric'));
     }
   };
   window.rejectClaim = async (claimId) => {
@@ -130,7 +130,7 @@ Screens['claim-review'] = (ctx) => {
       renderClaims();
       App.toast(Lang.t('claimRejected'));
     } catch (e) {
-      App.toast(Lang.t('toastRegDb'));
+      App.toast(Lang.t('toastApiGeneric'));
     }
   };
   return s;
@@ -218,7 +218,7 @@ Screens.chat = (ctx) => {
       renderMsgs();
       input.value = '';
     } catch (e) {
-      App.toast(Lang.t('toastRegDb'));
+      App.toast(Lang.t('toastApiGeneric'));
     }
   };
 
@@ -294,7 +294,7 @@ Screens.handover = (ctx) => {
       App.toast(Lang.t('handoverScheduled'));
       App.navigate('handover', { claimId: ctx.claimId });
     } catch (e) {
-      App.toast(Lang.t('toastRegDb'));
+      App.toast(Lang.t('toastApiGeneric'));
     }
   };
   window.confirmHandover = async () => {
@@ -305,7 +305,7 @@ Screens.handover = (ctx) => {
       App.toast(Lang.t('handoverConfirmed'));
       App.navigate('handover', { claimId: ctx.claimId });
     } catch (e) {
-      App.toast(Lang.t('toastRegDb'));
+      App.toast(Lang.t('toastApiGeneric'));
     }
   };
   return s;
@@ -367,7 +367,7 @@ Screens.notifications = () => {
       await App.refreshRemoteData();
       App.navigate('notifications');
     } catch (e) {
-      App.toast(Lang.t('toastRegDb'));
+      App.toast(Lang.t('toastApiGeneric'));
     }
   });
   return s;
@@ -583,7 +583,7 @@ Screens.report = (ctx) => {
       App.toast(Lang.t('reportOk'));
       setTimeout(() => App.back(), 800);
     } catch (e) {
-      App.toast(Lang.t('toastRegDb'));
+      App.toast(Lang.t('toastApiGeneric'));
     }
   });
   return s;
@@ -695,7 +695,7 @@ Screens['admin-mod'] = (ctx) => {
       App.toast(Lang.t('actionTaken', { action: actionLabel }));
       setTimeout(() => App.back(), 800);
     } catch (e) {
-      App.toast(Lang.t('toastRegDb'));
+      App.toast(Lang.t('toastApiGeneric'));
     }
   };
   return s;
