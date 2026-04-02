@@ -17,8 +17,12 @@ function parseSegments(req) {
   const fromUrl = rest ? rest.split('/').filter(Boolean) : [];
   if (fromUrl.length) return fromUrl;
   const q = req.query || {};
-  if (Array.isArray(q.path)) return q.path;
+  if (Array.isArray(q.path)) return q.path.filter(Boolean);
   if (typeof q.path === 'string') return q.path.split('/').filter(Boolean);
+  // Vercel catch-all naming variants
+  const alt = q.slug ?? q.params;
+  if (Array.isArray(alt)) return alt.filter(Boolean);
+  if (typeof alt === 'string') return alt.split('/').filter(Boolean);
   return [];
 }
 

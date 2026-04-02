@@ -152,6 +152,7 @@ const Api = {
   token: { get: getToken, set: setToken },
 
   async login(identifier, password) {
+    // Must match api/_dispatch.js: segments ['auth','login'] POST → _authLogin.js
     const out = await apiFetch('/api/auth/login', { method: 'POST', auth: false, body: { identifier, password } });
     const auth = unwrapAuthPayload(out);
     if (!auth) {
@@ -165,6 +166,7 @@ const Api = {
   },
 
   async register(payload) {
+    // Must match api/_dispatch.js: segments ['auth','register'] POST → _authRegister.js
     const out = await apiFetch('/api/auth/register', { method: 'POST', auth: false, body: payload });
     const auth = unwrapAuthPayload(out);
     if (!auth) {

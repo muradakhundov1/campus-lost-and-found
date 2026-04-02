@@ -8,9 +8,13 @@ const App = {
   screenContext: {},
 
   async refreshRemoteData() {
+    // Items require a round-trip; skip while logged out so Vercel logs are not confused with
+    // login/register (those use POST /api/auth/*). After sign-in, token exists and this runs again.
     try {
-      const { items } = await window.Api.itemsList();
-      if (Array.isArray(items)) DB.items = items;
+      if (window.Api.token.get()) {
+        const { items } = await window.Api.itemsList();
+        if (Array.isArray(items)) DB.items = items;
+      }
     } catch (e) {
       console.warn('Items load failed:', e);
     }
@@ -80,7 +84,7 @@ const App = {
     // Modal overlay close
     document.getElementById('modal-overlay').addEventListener('click', App.closeModal);
 
-    // Load config (categories/locations/questions) from backend
+    // GET /api/config — runs on every load (splash/login/register), not part of auth POSTs
     try {
       const cfg = await window.Api?.config?.();
       if (cfg) {
