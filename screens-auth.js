@@ -115,7 +115,7 @@ Screens.login = () => {
       <div style="text-align:right;margin-top:-8px;margin-bottom:20px">
         <span style="font-size:13px;color:var(--primary);font-weight:600;cursor:pointer">${Lang.t('forgotPassword')}</span>
       </div>
-      <button class="btn btn-primary btn-block btn-lg" id="login-btn">${Lang.t('signIn')}</button>
+      <button type="button" class="btn btn-primary btn-block btn-lg" id="login-btn">${Lang.t('signIn')}</button>
       <div class="auth-footer">${Lang.t('dontHaveAccount')} <span class="auth-link" onclick="App.navigate('register')">${Lang.t('signUp')}</span></div>
     </div>`;
   const pass = s.querySelector('#login-pass');
@@ -222,7 +222,7 @@ Screens.register = () => {
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <div style="font-size:12px;color:var(--info);line-height:1.5">${Lang.t('regVerifyBanner')}</div>
       </div>
-      <button class="btn btn-primary btn-block btn-lg" id="reg-btn">${Lang.t('registerCta')}</button>
+      <button type="button" class="btn btn-primary btn-block btn-lg" id="reg-btn">${Lang.t('registerCta')}</button>
       <div class="auth-footer">${Lang.t('alreadyHaveAccount')} <span class="auth-link" onclick="App.navigate('login')">${Lang.t('signIn')}</span></div>
     </div>`;
 

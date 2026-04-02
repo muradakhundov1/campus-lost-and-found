@@ -8,17 +8,30 @@ const App = {
   screenContext: {},
 
   async refreshRemoteData() {
-    // Items require a round-trip; skip while logged out so Vercel logs are not confused with
-    // login/register (those use POST /api/auth/*). After sign-in, token exists and this runs again.
+    const tok = window.Api.token.get();
+    // GET /api/config — no Bearer token (public). Load only when we have a session so anonymous
+    // splash/login/register do not hit /api/config (avoids confusing Vercel logs with auth).
+    if (tok) {
+      try {
+        const cfg = await window.Api.config();
+        if (cfg) {
+          DB.categories = cfg.categories || DB.categories;
+          DB.locations = cfg.locations || DB.locations;
+          DB.predefinedQuestions = cfg.predefinedQuestions || DB.predefinedQuestions;
+        }
+      } catch (e) {
+        console.warn('Config load failed:', e);
+      }
+    }
     try {
-      if (window.Api.token.get()) {
+      if (tok) {
         const { items } = await window.Api.itemsList();
         if (Array.isArray(items)) DB.items = items;
       }
     } catch (e) {
       console.warn('Items load failed:', e);
     }
-    if (!window.Api.token.get()) {
+    if (!tok) {
       DB.claims = [];
       DB.messages = {};
       DB.notifications = [];
@@ -83,18 +96,6 @@ const App = {
 
     // Modal overlay close
     document.getElementById('modal-overlay').addEventListener('click', App.closeModal);
-
-    // GET /api/config — runs on every load (splash/login/register), not part of auth POSTs
-    try {
-      const cfg = await window.Api?.config?.();
-      if (cfg) {
-        DB.categories = cfg.categories || DB.categories;
-        DB.locations = cfg.locations || DB.locations;
-        DB.predefinedQuestions = cfg.predefinedQuestions || DB.predefinedQuestions;
-      }
-    } catch (e) {
-      console.warn('Config load failed:', e);
-    }
 
     try {
       if (window.Api?.token?.get?.()) {
