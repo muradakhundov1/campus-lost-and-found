@@ -310,7 +310,7 @@ app.post('/api/items', requireAuth, (req, res) => {
       location: z.string().min(1),
       date: z.string().min(1),
       time: z.string().optional(),
-      verificationQuestions: z.array(z.object({ text: z.string().min(1) })).optional()
+      verificationQuestions: z.array(z.object({ id: z.string().optional(), text: z.string().optional() })).optional()
     })
     .safeParse(req.body);
   if (!body.success) return res.status(400).json({ error: 'invalid_request' });
@@ -345,7 +345,9 @@ app.post('/api/items', requireAuth, (req, res) => {
   );
 
   if (it.type === 'found') {
-    const qs = (it.verificationQuestions || []).filter((q) => q.text.trim());
+    const qs = (it.verificationQuestions || [])
+      .map((q) => ({ ...q, text: String(q.text ?? '').trim() }))
+      .filter((q) => q.text.length > 0);
     const insertQ = db.prepare('INSERT INTO item_verification_questions (id,item_id,text,position) VALUES (?,?,?,?)');
     db.transaction((rows) => {
       rows.forEach((q, idx) => insertQ.run(id('q'), itemId, q.text.trim(), idx + 1));

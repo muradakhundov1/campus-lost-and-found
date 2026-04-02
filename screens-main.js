@@ -412,7 +412,12 @@ Screens['create-post'] = (ctx) => {
         ${questions.length > 1 ? `<button onclick="removeQ(${i})" style="background:none;border:none;cursor:pointer;color:var(--danger);padding:10px 4px;font-size:18px">×</button>` : ''}
       </div>`).join('');
     container.querySelectorAll('.q-input').forEach(inp => {
-      inp.addEventListener('change', () => { questions[+inp.dataset.idx].text = inp.value; });
+      const sync = () => {
+        const i = +inp.dataset.idx;
+        if (questions[i]) questions[i].text = inp.value;
+      };
+      inp.addEventListener('input', sync);
+      inp.addEventListener('change', sync);
     });
   };
 
@@ -502,6 +507,15 @@ Screens['create-post'] = (ctx) => {
     if (!title.trim() || !cat || !loc) { App.toast(Lang.t('fillTitleCatLoc')); return; }
     if (!DB.currentUser?.id) { App.toast(Lang.t('signInShort')); return; }
 
+    // Read verification Qs from the DOM so values count even if the user clicked Post without blurring a field
+    let verificationQuestions = [];
+    if (isFound) {
+      s.querySelectorAll('#questions-container .q-input').forEach((inp) => {
+        const t = inp.value.trim();
+        if (t) verificationQuestions.push({ text: t });
+      });
+    }
+
     const payload = {
       type,
       title: title.trim(),
@@ -510,9 +524,7 @@ Screens['create-post'] = (ctx) => {
       location: loc,
       date: s.querySelector('#post-date').value,
       time: s.querySelector('#post-time').value,
-      verificationQuestions: isFound
-        ? questions.filter(q => q.text.trim()).map(q => ({ text: q.text.trim() }))
-        : []
+      verificationQuestions
     };
 
     try {

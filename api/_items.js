@@ -54,7 +54,7 @@ module.exports = async function handler(req, res) {
       location: z.string().min(1),
       date: z.string().min(1),
       time: z.string().optional(),
-      verificationQuestions: z.array(z.object({ id: z.string().optional(), text: z.string().min(1) })).optional()
+      verificationQuestions: z.array(z.object({ id: z.string().optional(), text: z.string().optional() })).optional()
     })
     .safeParse(body);
   if (!parsed.success) return json(res, 400, { error: 'invalid_request' });
@@ -63,12 +63,13 @@ module.exports = async function handler(req, res) {
   const urow = await query('select name from users where id = $1 limit 1', [userId]);
   const posterName = posterAbbrev(urow.rows[0]?.name);
 
-  const questionsJson = JSON.stringify(
-    (p.verificationQuestions || []).map((q, i) => ({
+  const vqRows = (p.verificationQuestions || [])
+    .map((q, i) => ({
       id: q.id || `nq${i}`,
-      text: String(q.text).trim()
+      text: String(q.text ?? '').trim()
     }))
-  );
+    .filter((q) => q.text.length > 0);
+  const questionsJson = JSON.stringify(vqRows);
 
   const itemId = `i${Date.now()}${Math.floor(Math.random() * 1000)}`;
 
