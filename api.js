@@ -36,6 +36,7 @@ async function apiFetch(path, { method = 'GET', body, auth = true } = {}) {
     body: body ? JSON.stringify(body) : undefined
   });
   const text = await res.text();
+  const ct = (res.headers.get('content-type') || '').toLowerCase();
   let data = null;
   if (text) {
     try {
@@ -43,8 +44,13 @@ async function apiFetch(path, { method = 'GET', body, auth = true } = {}) {
     } catch {
       const err = new Error('invalid_json');
       err.status = res.status;
+      err.hint = 'not_json';
       throw err;
     }
+  } else if (res.ok && (method === 'POST' || method === 'PUT' || method === 'PATCH')) {
+    const err = new Error('empty_response');
+    err.status = res.status;
+    throw err;
   }
   if (!res.ok) {
     const err = new Error(data?.error || 'request_failed');
@@ -52,7 +58,19 @@ async function apiFetch(path, { method = 'GET', body, auth = true } = {}) {
     err.data = data;
     throw err;
   }
+  if (res.ok && data == null && !ct.includes('json') && text === '') {
+    return {};
+  }
   return data;
+}
+
+/** Normalize login/register JSON (handles minor API shape differences). */
+function unwrapAuthPayload(raw) {
+  if (!raw || typeof raw !== 'object') return null;
+  const token = raw.token ?? raw.access_token ?? raw.accessToken;
+  const user = raw.user ?? raw.data?.user ?? raw.profile;
+  if (token && user && typeof user === 'object') return { token, user };
+  return null;
 }
 
 function normalizeItem(raw) {
@@ -89,26 +107,58 @@ function normalizeItem(raw) {
   };
 }
 
+function normalizeClaim(raw) {
+  if (!raw) return raw;
+  const finder = raw.isFinderResponse ?? raw.is_finder_response;
+  return {
+    id: raw.id,
+    itemId: raw.itemId ?? raw.item_id,
+    claimantId: raw.claimantId ?? raw.claimant_id,
+    claimantName: raw.claimantName ?? raw.claimant_name,
+    isFinderResponse: finder === true || finder === 1 || finder === 't' || finder === 'true',
+    status: raw.status,
+    submittedAt: raw.submittedAt ?? raw.submitted_at,
+    chatEnabled: Boolean(raw.chatEnabled ?? raw.chat_enabled),
+    reviewNote: raw.reviewNote ?? raw.review_note ?? '',
+    meetingPoint: raw.meetingPoint ?? raw.meeting_point,
+    meetingTime: raw.meetingTime ?? raw.meeting_time,
+    handoverStatus: raw.handoverStatus ?? raw.handover_status,
+    answers: Array.isArray(raw.answers) ? raw.answers : []
+  };
+}
+
 const Api = {
   token: { get: getToken, set: setToken },
 
   async login(identifier, password) {
     const out = await apiFetch('/api/auth/login', { method: 'POST', auth: false, body: { identifier, password } });
-    if (!out?.token || !out.user) throw new Error('bad_login_response');
-    setToken(out.token);
-    return out.user;
+    const auth = unwrapAuthPayload(out);
+    if (!auth) {
+      const err = new Error('bad_login_response');
+      err.code = 'bad_auth_payload';
+      err.raw = out;
+      throw err;
+    }
+    setToken(auth.token);
+    return auth.user;
   },
 
   async register(payload) {
     const out = await apiFetch('/api/auth/register', { method: 'POST', auth: false, body: payload });
-    if (!out?.token || !out.user) throw new Error('bad_register_response');
-    setToken(out.token);
-    return out.user;
+    const auth = unwrapAuthPayload(out);
+    if (!auth) {
+      const err = new Error('bad_register_response');
+      err.code = 'bad_auth_payload';
+      err.raw = out;
+      throw err;
+    }
+    setToken(auth.token);
+    return auth.user;
   },
 
   async me() {
     const out = await apiFetch('/api/me', { method: 'GET', auth: true });
-    return out.user;
+    return out?.user;
   },
 
   async config() {
@@ -118,18 +168,18 @@ const Api = {
 
   async itemsList() {
     const out = await apiFetch('/api/items', { method: 'GET', auth: false });
-    const items = (out.items || []).map(normalizeItem);
+    const items = (out?.items || []).map(normalizeItem);
     return { items };
   },
 
   async itemsCreate(payload) {
     const out = await apiFetch('/api/items', { method: 'POST', body: payload });
-    return { item: normalizeItem(out.item) };
+    return { item: normalizeItem(out?.item) };
   },
 
   async itemsGet(id) {
     const out = await apiFetch(`/api/items/${encodeURIComponent(id)}`, { method: 'GET', auth: false });
-    return { item: normalizeItem(out.item) };
+    return { item: normalizeItem(out?.item) };
   },
 
   async itemsDelete(id) {
@@ -138,19 +188,27 @@ const Api = {
 
   async itemsPatch(id, body) {
     const out = await apiFetch(`/api/items/${encodeURIComponent(id)}`, { method: 'PATCH', body });
-    return { item: normalizeItem(out.item) };
+    return { item: normalizeItem(out?.item) };
   },
 
   async claimsList() {
-    return await apiFetch('/api/claims', { method: 'GET' });
+    const out = await apiFetch('/api/claims', { method: 'GET' });
+    const claims = (out?.claims || []).map(normalizeClaim);
+    return { claims };
   },
 
   async itemClaimsGet(itemId) {
-    return await apiFetch(`/api/items/${encodeURIComponent(itemId)}/claims`, { method: 'GET' });
+    const out = await apiFetch(`/api/items/${encodeURIComponent(itemId)}/claims`, { method: 'GET' });
+    const claims = (out?.claims || []).map(normalizeClaim);
+    return { claims };
   },
 
   async itemClaimsPost(itemId, body) {
-    return await apiFetch(`/api/items/${encodeURIComponent(itemId)}/claims`, { method: 'POST', body });
+    const out = await apiFetch(`/api/items/${encodeURIComponent(itemId)}/claims`, { method: 'POST', body });
+    const next = { ...(out || {}) };
+    if (out?.claim) next.claim = normalizeClaim(out.claim);
+    if (out?.item) next.item = normalizeItem(out.item);
+    return next;
   },
 
   async claimApprove(claimId) {
@@ -174,7 +232,8 @@ const Api = {
   },
 
   async notificationsList() {
-    return await apiFetch('/api/notifications', { method: 'GET' });
+    const out = await apiFetch('/api/notifications', { method: 'GET' });
+    return { notifications: out?.notifications || [] };
   },
 
   async notificationsMarkAllRead() {
@@ -182,7 +241,8 @@ const Api = {
   },
 
   async reportsList() {
-    return await apiFetch('/api/reports', { method: 'GET' });
+    const out = await apiFetch('/api/reports', { method: 'GET' });
+    return { reports: out?.reports || [] };
   },
 
   async reportsCreate(body) {
@@ -194,7 +254,8 @@ const Api = {
   },
 
   async adminLog() {
-    return await apiFetch('/api/admin/log', { method: 'GET' });
+    const out = await apiFetch('/api/admin/log', { method: 'GET' });
+    return { adminLog: out?.adminLog || [] };
   },
 
   async adminAction(body) {
@@ -203,7 +264,7 @@ const Api = {
 
   async userGet(id) {
     const out = await apiFetch(`/api/users/${encodeURIComponent(id)}`, { method: 'GET', auth: false });
-    return out.user;
+    return out?.user;
   }
 };
 

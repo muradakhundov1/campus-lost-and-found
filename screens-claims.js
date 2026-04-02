@@ -18,7 +18,7 @@ Screens['claim-submit'] = (ctx) => {
     <div class="scroll-area has-bottom-pad" style="padding:16px">
       <div style="display:flex;gap:12px;align-items:center;background:white;border-radius:var(--r-lg);padding:14px;margin-bottom:20px;box-shadow:var(--shadow-sm);border:1px solid var(--border-light)">
         <div>${categoryIcon(item.category)}</div>
-        <div><div style="font-size:15px;font-weight:700">${item.title}</div><div style="font-size:12px;color:var(--text-secondary)">${item.location} · ${formatDate(item.date)}</div></div>
+        <div><div style="font-size:15px;font-weight:700">${item.title}</div><div style="font-size:12px;color:var(--text-secondary)">${Lang.formatLocation(item.location)} · ${formatDate(item.date)}</div></div>
       </div>
       <div class="info-banner" style="margin:0 0 20px">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -106,7 +106,7 @@ Screens['claim-review'] = (ctx) => {
     ${backHeader(isLostItem ? Lang.t('finderResponsesTitle') : Lang.t('claimsForItemTitle'), `<span style="font-size:13px;color:var(--text-secondary);font-weight:600">${isLostItem ? Lang.t('claimCountResponses', { count: claims.length }) : Lang.t('claimCountClaims', { count: claims.length })}</span>`)}
     <div style="padding:12px 16px;background:white;border-bottom:1px solid var(--border-light);display:flex;gap:10px;align-items:center">
       <div>${categoryIcon(item.category)}</div>
-      <div style="flex:1"><div style="font-size:13px;font-weight:700">${item.title}</div><div style="font-size:11px;color:var(--text-secondary)">${item.location}</div></div>
+      <div style="flex:1"><div style="font-size:13px;font-weight:700">${item.title}</div><div style="font-size:11px;color:var(--text-secondary)">${Lang.formatLocation(item.location)}</div></div>
     </div>
     <div class="scroll-area has-bottom-pad" style="padding:16px" id="claim-list"></div>`;
 
@@ -175,7 +175,7 @@ Screens.chat = (ctx) => {
         </button>
       </div>
       <div style="background:var(--border-light);padding:8px 16px;font-size:11px;color:var(--text-secondary);text-align:center">
-        ${Lang.t('reItem')}: <strong>${item?.title}</strong> · ${item?.location}
+        ${Lang.t('reItem')}: <strong>${item?.title}</strong> · ${Lang.formatLocation(item?.location)}
       </div>
       <div class="chat-messages" id="chat-msgs" style="flex:1;overflow-y:auto"></div>
       <div class="chat-action-bar">
@@ -242,7 +242,7 @@ Screens.handover = (ctx) => {
       <div class="handover-card">
         <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px">
           <div>${categoryIcon(item?.category || 'Other')}</div>
-          <div><div style="font-size:15px;font-weight:700">${item?.title}</div><div style="font-size:12px;color:var(--text-secondary)">${item?.location}</div></div>
+          <div><div style="font-size:15px;font-weight:700">${item?.title}</div><div style="font-size:12px;color:var(--text-secondary)">${Lang.formatLocation(item?.location)}</div></div>
         </div>
         ${statusBadge(claim?.status || 'Approved')}
         <div class="handover-status-bar" style="margin-top:20px">

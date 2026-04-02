@@ -56,6 +56,10 @@ module.exports = async function handler(req, res) {
       return json(res, 400, { error: 'invalid_json' });
     }
 
+    if (body && body.isFinderResponse != null && typeof body.isFinderResponse !== 'boolean') {
+      body.isFinderResponse = body.isFinderResponse === true || body.isFinderResponse === 'true' || body.isFinderResponse === 1;
+    }
+
     const parsed = z
       .object({
         answers: z

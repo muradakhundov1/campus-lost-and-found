@@ -81,6 +81,15 @@ const I18N = {
     location: 'Location',
     allCategories: 'All Categories',
     allLocations: 'All Locations',
+    locMainBuilding: 'Main Building',
+    locLibrary: 'Library',
+    locCafeteria: 'Cafeteria',
+    locLab: 'Lab',
+    locClassroomBuilding: 'Classroom Building',
+    locDormitory: 'Dormitory',
+    locParkingArea: 'Parking Area',
+    locSecurityDesk: 'Security Desk',
+    locOther: 'Other',
     reset: 'Reset',
     apply: 'Apply',
     verification: 'Verification',
@@ -330,6 +339,8 @@ const I18N = {
     toastPasswordLen: 'Password must be at least 8 characters',
     toastAccountCreated: 'Account created!',
     toastRegDuplicate: 'Registration failed. Email/phone may already exist.',
+    toastRegBadResponse:
+      'Sign-up returned OK but the app did not get token or user JSON. Check that requests go to your API (not a static page), or try again.',
     toastRegDb: 'Registration failed. Check that the database is set up, then try again.',
     back: 'Back',
     ariaLabelHome: 'Home',
@@ -418,6 +429,15 @@ const I18N = {
     location: 'Məkan',
     allCategories: 'Bütün kateqoriyalar',
     allLocations: 'Bütün məkanlar',
+    locMainBuilding: 'Əsas bina',
+    locLibrary: 'Kitabxana',
+    locCafeteria: 'Yeməkxana',
+    locLab: 'Laboratoriya',
+    locClassroomBuilding: 'Dərs binası',
+    locDormitory: 'Yataqxana',
+    locParkingArea: 'Dayanacaq',
+    locSecurityDesk: 'Mühafizə masası',
+    locOther: 'Digər',
     reset: 'Sıfırla',
     apply: 'Tətbiq et',
     verification: 'Təsdiq',
@@ -667,6 +687,8 @@ const I18N = {
     toastPasswordLen: 'Şifrə ən azı 8 simvol olmalıdır',
     toastAccountCreated: 'Hesab yaradıldı!',
     toastRegDuplicate: 'Qeydiyyat alınmadı. E-poçt və ya telefon artıq qeydiyyatdadır.',
+    toastRegBadResponse:
+      'Server OK cavabı verdi, amma tətbiq token və ya istifadəçi məlumatı almadı. Sorğuların API-ya getdiyini yoxlayın və ya yenidən cəhd edin.',
     toastRegDb: 'Qeydiyyat alınmadı. Verilənlər bazasının qurulduğunu yoxlayın.',
     back: 'Geri',
     ariaLabelHome: 'Əsas səhifə',
@@ -688,6 +710,24 @@ function getLang() {
 function interpolate(str, vars) {
   if (!vars || typeof vars !== 'object') return str;
   return str.replace(/\{(\w+)\}/g, (_, k) => (vars[k] != null ? String(vars[k]) : `{${k}}`));
+}
+
+const LOCATION_I18N_KEYS = {
+  'Main Building': 'locMainBuilding',
+  Library: 'locLibrary',
+  Cafeteria: 'locCafeteria',
+  Lab: 'locLab',
+  'Classroom Building': 'locClassroomBuilding',
+  Dormitory: 'locDormitory',
+  'Parking Area': 'locParkingArea',
+  'Security Desk': 'locSecurityDesk',
+  Other: 'locOther'
+};
+
+function formatLocation(value) {
+  if (value == null || value === '') return '';
+  const key = LOCATION_I18N_KEYS[value];
+  return key ? t(key) : String(value);
 }
 
 function t(key, vars) {
@@ -731,5 +771,6 @@ window.Lang = {
   current: getLang(),
   set: setLang,
   t,
+  formatLocation,
   syncChrome: syncChromeI18n
 };

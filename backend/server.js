@@ -371,13 +371,18 @@ app.get('/api/items/:id/claims', requireAuth, (req, res) => {
 });
 
 app.post('/api/items/:id/claims', requireAuth, (req, res) => {
+  const rawBody = { ...req.body };
+  if (rawBody.isFinderResponse != null && typeof rawBody.isFinderResponse !== 'boolean') {
+    rawBody.isFinderResponse =
+      rawBody.isFinderResponse === true || rawBody.isFinderResponse === 'true' || rawBody.isFinderResponse === 1;
+  }
   const body = z
     .object({
       answers: z.array(z.object({ questionId: z.string().optional(), question: z.string().min(1), answer: z.string().min(1) })).default([]),
       isFinderResponse: z.boolean().optional(),
       meetingPoint: z.string().optional()
     })
-    .safeParse(req.body);
+    .safeParse(rawBody);
   if (!body.success) return res.status(400).json({ error: 'invalid_request' });
   const db = getDb();
   const item = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);

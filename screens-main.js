@@ -86,7 +86,7 @@ Screens.home = () => {
               <div class="match-badge">Match</div>
               <div style="margin-bottom:8px">${categoryIcon(m.category)}</div>
               <div class="match-title">${m.title}</div>
-              <div class="match-meta">${m.location} · ${formatDate(m.date)}</div>
+              <div class="match-meta">${Lang.formatLocation(m.location)} · ${formatDate(m.date)}</div>
               <div class="match-score">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
                 ${Lang.t('matchScore')}
@@ -138,7 +138,15 @@ Screens.search = (ctx) => {
   const renderResults = () => {
     let items = DB.items.filter(item => {
       const q = query.toLowerCase();
-      const matchQ = !q || item.title.toLowerCase().includes(q) || item.description.toLowerCase().includes(q) || item.category.toLowerCase().includes(q) || item.location.toLowerCase().includes(q);
+      const locQ = item.location.toLowerCase();
+      const locDisp = Lang.formatLocation(item.location).toLowerCase();
+      const matchQ =
+        !q ||
+        item.title.toLowerCase().includes(q) ||
+        item.description.toLowerCase().includes(q) ||
+        item.category.toLowerCase().includes(q) ||
+        locQ.includes(q) ||
+        locDisp.includes(q);
       const matchType = filterType === 'all' || item.type === filterType;
       const matchCat = filterCat === 'all' || item.category === filterCat;
       const matchLoc = filterLoc === 'all' || item.location === filterLoc;
@@ -181,7 +189,7 @@ Screens.search = (ctx) => {
           <label class="form-label">${Lang.t('location')}</label>
           <select class="form-select" id="modal-loc">
             <option value="all">${Lang.t('allLocations')}</option>
-            ${DB.locations.map(l=>`<option value="${l}" ${filterLoc===l?'selected':''}>${l}</option>`).join('')}
+            ${DB.locations.map(l=>`<option value="${l}" ${filterLoc===l?'selected':''}>${Lang.formatLocation(l)}</option>`).join('')}
           </select>
         </div>
         <div style="display:flex;gap:12px">
@@ -206,12 +214,14 @@ Screens['item-detail'] = (ctx) => {
   const u = DB.currentUser;
   const isOwner = item.posterId === u?.id;
   const isAdmin = u?.role === 'admin';
-  const myExistingClaim = DB.claims.find(c => c.itemId === item.id && c.claimantId === u?.id);
-  // Finder responses on lost items
-  const myFinderResponse = DB.claims.find(c => c.itemId === item.id && c.claimantId === u?.id && c.isFinderResponse);
+  /** Current user's claim on this item (found = claim; lost = finder response — only one applies per item). */
+  const myClaimOnItem = DB.claims.find(c => c.itemId === item.id && c.claimantId === u?.id);
   const matches = DB.getSuggestedMatches(item);
   const claimCount = DB.getItemClaims(item.id).length;
-  const finderResponses = DB.claims.filter(c => c.itemId === item.id && c.isFinderResponse);
+  const finderResponses =
+    item.type === 'lost'
+      ? DB.claims.filter(c => c.itemId === item.id && c.claimantId !== item.posterId)
+      : DB.claims.filter(c => c.itemId === item.id && c.isFinderResponse);
 
   // Build action HTML based on role, ownership, item type, item status
   let actionHTML = '';
@@ -247,17 +257,17 @@ Screens['item-detail'] = (ctx) => {
     actionHTML = ownerActions;
   } else if (item.type === 'found') {
     // Non-owner viewing a found item: Submit Claim
-    if (myExistingClaim) {
-      actionHTML = `<div class="info-banner" style="margin:0 0 10px;background:var(--success-light);border-color:rgba(22,163,74,0.2)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><div><div style="font-size:13px;font-weight:700;color:var(--success)">${Lang.t('claimSubmitted')}</div><div style="font-size:12px;color:var(--text-secondary)">${Lang.t('statusLabel')}: ${myExistingClaim.status}</div></div></div>
-        ${myExistingClaim.chatEnabled ? `<button class="btn btn-primary btn-block" onclick="App.navigate('chat',{claimId:'${myExistingClaim.id}'})">${Lang.t('openChat')}</button>` : ''}`;
+    if (myClaimOnItem) {
+      actionHTML = `<div class="info-banner" style="margin:0 0 10px;background:var(--success-light);border-color:rgba(22,163,74,0.2)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><div><div style="font-size:13px;font-weight:700;color:var(--success)">${Lang.t('claimSubmitted')}</div><div style="font-size:12px;color:var(--text-secondary)">${Lang.t('statusLabel')}: ${myClaimOnItem.status}</div></div></div>
+        ${myClaimOnItem.chatEnabled ? `<button class="btn btn-primary btn-block" onclick="App.navigate('chat',{claimId:'${myClaimOnItem.id}'})">${Lang.t('openChat')}</button>` : ''}`;
     } else {
       actionHTML = `<button class="btn btn-primary btn-block btn-lg" onclick="App.navigate('claim-submit',{itemId:'${item.id}'})">${Lang.t('submitClaim')}</button>`;
     }
   } else if (item.type === 'lost') {
-    // Non-owner viewing a lost item: I Found This
-    if (myFinderResponse) {
-      actionHTML = `<div class="info-banner" style="margin:0 0 10px;background:var(--success-light);border-color:rgba(22,163,74,0.2)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><div><div style="font-size:13px;font-weight:700;color:var(--success)">${Lang.t('responseSubmitted')}</div><div style="font-size:12px;color:var(--text-secondary)">${Lang.t('statusLabel')}: ${myFinderResponse.status}</div></div></div>
-        ${myFinderResponse.chatEnabled ? `<button class="btn btn-primary btn-block" onclick="App.navigate('chat',{claimId:'${myFinderResponse.id}'})">${Lang.t('openChat')}</button>` : ''}`;
+    // Non-owner viewing a lost item: I Found This (only claim type from others is finder response)
+    if (myClaimOnItem) {
+      actionHTML = `<div class="info-banner" style="margin:0 0 10px;background:var(--success-light);border-color:rgba(22,163,74,0.2)"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><div><div style="font-size:13px;font-weight:700;color:var(--success)">${Lang.t('responseSubmitted')}</div><div style="font-size:12px;color:var(--text-secondary)">${Lang.t('statusLabel')}: ${myClaimOnItem.status}</div></div></div>
+        ${myClaimOnItem.chatEnabled ? `<button class="btn btn-primary btn-block" onclick="App.navigate('chat',{claimId:'${myClaimOnItem.id}'})">${Lang.t('openChat')}</button>` : ''}`;
     } else {
       actionHTML = `<button class="btn btn-primary btn-block btn-lg" onclick="App.navigate('finder-response',{itemId:'${item.id}'})">${Lang.t('iFoundThis')}</button>`;
     }
@@ -288,7 +298,7 @@ Screens['item-detail'] = (ctx) => {
         </div>
         <div class="detail-row">
           <div class="detail-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div>
-          <div class="detail-row-content"><div class="detail-row-label">${Lang.t('locationLabel')}</div><div class="detail-row-value">${item.location}</div></div>
+          <div class="detail-row-content"><div class="detail-row-label">${Lang.t('locationLabel')}</div><div class="detail-row-value">${Lang.formatLocation(item.location)}</div></div>
         </div>
         <div class="detail-row">
           <div class="detail-icon"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
@@ -315,7 +325,7 @@ Screens['item-detail'] = (ctx) => {
                 <div>${categoryIcon(m.category)}</div>
                 <div style="flex:1">
                   <div style="font-size:14px;font-weight:700">${m.title}</div>
-                  <div style="font-size:12px;color:var(--text-secondary)">${itemBadge(m.type)} · ${m.location} · ${formatDate(m.date)}</div>
+                  <div style="font-size:12px;color:var(--text-secondary)">${itemBadge(m.type)} · ${Lang.formatLocation(m.location)} · ${formatDate(m.date)}</div>
                 </div>
               </div>
             </div>`).join('')}
@@ -435,7 +445,7 @@ Screens['create-post'] = (ctx) => {
         <label class="form-label">${Lang.t('location')}<span class="required">*</span></label>
         <select class="form-select" id="post-loc">
           <option value="">${Lang.t('whereLostFound', { type: isFound ? Lang.t('foundLower') : Lang.t('lostLower') })}</option>
-          ${DB.locations.map(l=>`<option value="${l}">${l}</option>`).join('')}
+          ${DB.locations.map(l=>`<option value="${l}">${Lang.formatLocation(l)}</option>`).join('')}
         </select>
       </div>
       <div style="display:flex;gap:12px">
@@ -528,7 +538,7 @@ Screens['finder-response'] = (ctx) => {
     <div class="scroll-area has-bottom-pad" style="padding:16px">
       <div style="display:flex;gap:12px;align-items:center;background:white;border-radius:var(--r-lg);padding:14px;margin-bottom:20px;box-shadow:var(--shadow-sm);border:1px solid var(--border-light)">
         <div>${categoryIcon(item.category)}</div>
-        <div><div style="font-size:15px;font-weight:700">${item.title}</div><div style="font-size:12px;color:var(--text-secondary)">${item.location} · ${formatDate(item.date)}</div></div>
+        <div><div style="font-size:15px;font-weight:700">${item.title}</div><div style="font-size:12px;color:var(--text-secondary)">${Lang.formatLocation(item.location)} · ${formatDate(item.date)}</div></div>
       </div>
       <div class="info-banner" style="margin:0 0 20px">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
@@ -553,7 +563,7 @@ Screens['finder-response'] = (ctx) => {
         <label class="form-label">${Lang.t('suggestedMeeting')}</label>
         <select class="form-select" id="finder-meeting">
           <option value="">${Lang.t('selectLocation')}</option>
-          ${DB.locations.map(l=>`<option value="${l}">${l}</option>`).join('')}
+          ${DB.locations.map(l=>`<option value="${l}">${Lang.formatLocation(l)}</option>`).join('')}
         </select>
       </div>
       <button class="btn btn-primary btn-block btn-lg" id="submit-finder-btn">${Lang.t('submitResponse')}</button>
@@ -571,7 +581,13 @@ Screens['finder-response'] = (ctx) => {
       ...(meeting ? [{ questionId: 'meeting', question: 'Suggested meeting point', answer: meeting }] : [])
     ];
     try {
-      await window.Api.itemClaimsPost(item.id, { answers, isFinderResponse: true });
+      const out = await window.Api.itemClaimsPost(item.id, { answers, isFinderResponse: true });
+      if (out?.claim && !DB.claims.some((c) => c.id === out.claim.id)) DB.claims.unshift(out.claim);
+      if (out?.item) {
+        const ix = DB.items.findIndex((i) => i.id === out.item.id);
+        if (ix >= 0) DB.items[ix] = out.item;
+        else DB.items.unshift(out.item);
+      }
       await App.refreshRemoteData();
       App.toast(Lang.t('responseOk'));
       setTimeout(() => App.navigate('item-detail', { itemId: item.id }), 800);

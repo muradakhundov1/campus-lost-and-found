@@ -136,7 +136,11 @@ Screens.login = () => {
     try {
       user = await window.Api.login(identifier, password);
     } catch (e) {
-      App.toast(Lang.t('toastSignInFailed'));
+      if (e.message === 'invalid_json' || e.message === 'empty_response' || e.code === 'bad_auth_payload') {
+        App.toast(Lang.t('toastRegBadResponse'));
+      } else {
+        App.toast(Lang.t('toastSignInFailed'));
+      }
       return;
     }
     DB.currentUser = user;
@@ -276,6 +280,12 @@ Screens.register = () => {
     } catch (e) {
       if (e.status === 409 || e.data?.error === 'user_exists') {
         App.toast(Lang.t('toastRegDuplicate'));
+      } else if (
+        e.message === 'invalid_json' ||
+        e.message === 'empty_response' ||
+        e.code === 'bad_auth_payload'
+      ) {
+        App.toast(Lang.t('toastRegBadResponse'));
       } else {
         App.toast(Lang.t('toastRegDb'));
       }
