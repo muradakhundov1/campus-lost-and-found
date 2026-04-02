@@ -12,13 +12,11 @@ Screens.splash = () => {
     <div class="splash-screen" style="flex:1;gap:0">
       <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:32px">
         <div class="splash-logo">
-          <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/>
-          </svg>
+          <img src="assets/bhos-logo.png" alt="Baku Higher Oil School logo" />
         </div>
         <div>
-          <div class="splash-title">Campus Lost &amp; Found</div>
-          <div class="splash-sub" style="margin-top:10px">One place for the whole campus.<br>Simple. Fast. Trustworthy.</div>
+          <div class="splash-title">${Lang.t('appName')}</div>
+          <div class="splash-sub" style="margin-top:10px">One place for BHOS.<br>Simple. Fast. Trustworthy.</div>
         </div>
         <div class="splash-dots">
           <div class="splash-dot active"></div>
@@ -28,14 +26,14 @@ Screens.splash = () => {
       </div>
       <div style="padding:32px;display:flex;flex-direction:column;gap:12px">
         <button class="btn btn-block" onclick="App.navigate('onboarding')" style="background:white;color:var(--primary);font-size:16px;padding:16px">
-          Get Started
+          ${Lang.t('getStarted')}
         </button>
         <button class="btn btn-block btn-outline" onclick="App.navigate('login')" style="border-color:rgba(255,255,255,0.5);color:white;font-size:16px;padding:16px">
-          I already have an account
+          ${Lang.t('alreadyAccount')}
         </button>
       </div>
       <div style="text-align:center;padding-bottom:24px;color:rgba(255,255,255,0.5);font-size:11px">
-        🏫 University of Lakewood Campus
+        ${Lang.t('bhos')}
       </div>
     </div>`;
   return s;
@@ -90,54 +88,62 @@ Screens.login = () => {
   const s = makeScreen('login');
   s.innerHTML = `
     <div class="auth-screen has-bottom-pad" style="padding-top:24px">
-      <div class="auth-logo">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+      <div class="lang-toggle-row">
+        <button class="lang-pill ${Lang.current==='en'?'active':''}" type="button" id="lang-en">EN</button>
+        <button class="lang-pill ${Lang.current==='az'?'active':''}" type="button" id="lang-az">AZ</button>
       </div>
-      <div class="auth-title">Welcome back</div>
-      <div class="auth-sub">Sign in to your campus account</div>
+      <div class="auth-logo">
+        <img src="assets/bhos-logo.png" alt="Baku Higher Oil School logo" />
+      </div>
+      <div class="auth-title">${Lang.t('welcomeBack')}</div>
+      <div class="auth-sub">${Lang.t('signInSubtitle')}</div>
       <div class="form-group">
-        <label class="form-label">Campus Email or Phone<span class="required">*</span></label>
+        <label class="form-label">${Lang.t('emailOrPhone')}<span class="required">*</span></label>
         <div class="input-icon-wrap">
           <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <input id="login-email" class="form-input" type="email" placeholder="you@campus.edu or +1 555-..." value="alex.j@campus.edu" />
+          <input id="login-email" class="form-input" type="text" placeholder="you@bhos.edu.az or +994..." autocomplete="username" />
         </div>
       </div>
       <div class="form-group">
-        <label class="form-label">Password<span class="required">*</span></label>
+        <label class="form-label">${Lang.t('password')}<span class="required">*</span></label>
         <div class="input-icon-wrap">
           <svg class="input-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
-          <input id="login-pass" class="form-input" type="password" placeholder="••••••••" value="password" style="padding-left:44px"/>
+          <input id="login-pass" class="form-input" type="password" placeholder="••••••••" autocomplete="current-password" style="padding-left:44px;padding-right:44px"/>
+          <button class="pw-toggle" type="button" id="login-pass-toggle" aria-label="Show password">Show</button>
         </div>
       </div>
       <div style="text-align:right;margin-top:-8px;margin-bottom:20px">
         <span style="font-size:13px;color:var(--primary);font-weight:600;cursor:pointer">Forgot password?</span>
       </div>
-      <button class="btn btn-primary btn-block btn-lg" id="login-btn">Sign In</button>
-      <div style="text-align:center;margin:16px 0;font-size:12px;color:var(--text-tertiary)">— or sign in as —</div>
-      <div style="display:flex;flex-direction:column;gap:10px">
-        ${DB.users.filter(u=>u.id!=='u4').map(u=>`
-          <button class="btn btn-secondary btn-block" onclick="App.login('${u.id}')" style="justify-content:flex-start;gap:12px">
-            <div class="avatar avatar-sm">${u.avatar}</div>
-            <div style="text-align:left">
-              <div style="font-size:13px;font-weight:700">${u.name}</div>
-              <div style="font-size:11px;color:var(--text-secondary)">${u.role} — ${u.department}</div>
-            </div>
-          </button>`).join('')}
-        <button class="btn btn-outline btn-block" onclick="App.login('u4')" style="justify-content:flex-start;gap:12px;border-color:var(--warning);color:var(--warning)">
-          <div class="avatar avatar-sm" style="background:var(--warning-light);color:var(--warning)">AU</div>
-          <div style="text-align:left">
-            <div style="font-size:13px;font-weight:700">Admin User</div>
-            <div style="font-size:11px;color:var(--text-secondary)">admin — Administration</div>
-          </div>
-        </button>
-      </div>
-      <div class="auth-footer">Don't have an account? <span class="auth-link" onclick="App.navigate('register')">Sign up</span></div>
+      <button class="btn btn-primary btn-block btn-lg" id="login-btn">${Lang.t('signIn')}</button>
+      <div class="auth-footer">Don't have an account? <span class="auth-link" onclick="App.navigate('register')">${Lang.t('signUp')}</span></div>
     </div>`;
-  s.querySelector('#login-btn').addEventListener('click', () => {
-    const email = s.querySelector('#login-email').value;
-    const found = DB.users.find(u => u.email === email || u.phone === email);
-    App.login(found ? found.id : 'u1');
+  const pass = s.querySelector('#login-pass');
+  const toggle = s.querySelector('#login-pass-toggle');
+  toggle.addEventListener('click', () => {
+    const isPw = pass.type === 'password';
+    pass.type = isPw ? 'text' : 'password';
+    toggle.textContent = isPw ? 'Hide' : 'Show';
+    toggle.setAttribute('aria-label', isPw ? 'Hide password' : 'Show password');
   });
+
+  s.querySelector('#login-btn').addEventListener('click', async () => {
+    const identifier = s.querySelector('#login-email').value.trim();
+    const password = s.querySelector('#login-pass').value;
+    if (!identifier) { App.toast('Please enter email or phone'); return; }
+    if (!password) { App.toast('Please enter password'); return; }
+    try {
+      const user = await window.Api.login(identifier, password);
+      DB.currentUser = user;
+      App.navigate('home', {}, false);
+      App.history = [];
+    } catch (e) {
+      App.toast('Sign in failed. Check credentials.');
+    }
+  });
+
+  s.querySelector('#lang-en').addEventListener('click', () => Lang.set('en'));
+  s.querySelector('#lang-az').addEventListener('click', () => Lang.set('az'));
   return s;
 };
 
@@ -146,100 +152,128 @@ Screens.register = () => {
   const s = makeScreen('register');
   s.innerHTML = `
     <div class="auth-screen has-bottom-pad" style="padding-top:24px;overflow-y:auto">
-      <div class="auth-logo">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+      <div class="lang-toggle-row">
+        <button class="lang-pill ${Lang.current==='en'?'active':''}" type="button" id="lang-en">EN</button>
+        <button class="lang-pill ${Lang.current==='az'?'active':''}" type="button" id="lang-az">AZ</button>
       </div>
-      <div class="auth-title">Create account</div>
-      <div class="auth-sub">Join the campus community</div>
+      <div class="auth-logo">
+        <img src="assets/bhos-logo.png" alt="Baku Higher Oil School logo" />
+      </div>
+      <div class="auth-title">${Lang.t('createAccount')}</div>
+      <div class="auth-sub">${Lang.t('joinCommunity')}</div>
       <div class="form-group">
-        <label class="form-label">Full Name<span class="required">*</span></label>
+        <label class="form-label">${Lang.t('fullName')}<span class="required">*</span></label>
         <input class="form-input" type="text" placeholder="Your full name" id="reg-name" />
       </div>
       <div class="form-group">
-        <label class="form-label">Campus Email<span class="required">*</span></label>
-        <input class="form-input" type="email" placeholder="you@campus.edu" id="reg-email" />
+        <label class="form-label">${Lang.t('campusEmail')}<span class="required">*</span></label>
+        <input class="form-input" type="email" placeholder="you@bhos.edu.az" id="reg-email" />
         <div class="form-hint">Must be your official campus email address</div>
       </div>
       <div class="form-group">
-        <label class="form-label">Phone Number</label>
-        <input class="form-input" type="tel" placeholder="+1 555-..." id="reg-phone" />
+        <label class="form-label">${Lang.t('phoneNumber')}</label>
+        <input class="form-input" type="tel" placeholder="+994 XX XXX XX XX" id="reg-phone" autocomplete="tel" />
         <div class="form-hint">Used for account verification only, not shown publicly</div>
       </div>
       <div class="form-group">
-        <label class="form-label">Role<span class="required">*</span></label>
+        <label class="form-label">${Lang.t('role')}<span class="required">*</span></label>
         <select class="form-select" id="reg-role">
           <option value="student">Student</option>
           <option value="staff">Staff</option>
         </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Department / Faculty</label>
-        <input class="form-input" type="text" placeholder="e.g. Computer Science" id="reg-dept" />
+        <label class="form-label">${Lang.t('facultyProgram')}</label>
+        <select class="form-select" id="reg-dept">
+          <option value="">${Lang.t('select')}</option>
+          ${[
+            'Petroleum Engineering',
+            'Chemical Engineering',
+            'Process Automation Engineering',
+            'Information Security',
+            'Computer Engineering',
+            'Business Administration',
+            'Computer Science',
+            'Finance',
+            'Data Analytics'
+          ].map(f => `<option value="${f}">${f}</option>`).join('')}
+        </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Password<span class="required">*</span></label>
-        <input class="form-input" type="password" placeholder="Min. 8 characters" id="reg-pass" />
+        <label class="form-label">${Lang.t('password')}<span class="required">*</span></label>
+        <div class="input-icon-wrap">
+          <input class="form-input" type="password" placeholder="Min. 8 characters" id="reg-pass" autocomplete="new-password" style="padding-right:44px" />
+          <button class="pw-toggle" type="button" id="reg-pass-toggle" aria-label="Show password">Show</button>
+        </div>
       </div>
       <div class="info-banner" style="margin:0 0 20px">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
         <div style="font-size:12px;color:var(--info);line-height:1.5">A 6-digit verification code will be sent to your email or phone after registration.</div>
       </div>
-      <button class="btn btn-primary btn-block btn-lg" id="reg-btn">Continue</button>
-      <div class="auth-footer">Already have an account? <span class="auth-link" onclick="App.navigate('login')">Sign in</span></div>
+      <button class="btn btn-primary btn-block btn-lg" id="reg-btn">${Lang.t('registerCta')}</button>
+      <div class="auth-footer">${Lang.t('alreadyHaveAccount')} <span class="auth-link" onclick="App.navigate('login')">${Lang.t('signIn')}</span></div>
     </div>`;
-  s.querySelector('#reg-btn').addEventListener('click', () => {
-    const name = s.querySelector('#reg-name').value;
-    if (!name.trim()) { App.toast('Please enter your full name'); return; }
-    const email = s.querySelector('#reg-email').value;
-    if (!email.includes('@')) { App.toast('Please enter a valid campus email'); return; }
-    App.navigate('otp', { name, email, fromRegister: true });
+
+  const phone = s.querySelector('#reg-phone');
+  phone.addEventListener('focus', () => {
+    if (!phone.value) phone.value = '+994 ';
   });
+  phone.addEventListener('input', () => {
+    if (phone.value && !phone.value.startsWith('+994')) {
+      phone.value = '+994 ' + phone.value.replace(/^\+?/, '').replace(/^994\s?/, '');
+    }
+  });
+
+  const rpass = s.querySelector('#reg-pass');
+  const rtoggle = s.querySelector('#reg-pass-toggle');
+  rtoggle.addEventListener('click', () => {
+    const isPw = rpass.type === 'password';
+    rpass.type = isPw ? 'text' : 'password';
+    rtoggle.textContent = isPw ? 'Hide' : 'Show';
+    rtoggle.setAttribute('aria-label', isPw ? 'Hide password' : 'Show password');
+  });
+
+  s.querySelector('#reg-btn').addEventListener('click', async () => {
+    const name = s.querySelector('#reg-name').value.trim();
+    const email = s.querySelector('#reg-email').value.trim();
+    const phoneVal = phone.value.trim() || undefined;
+    const role = s.querySelector('#reg-role').value;
+    const department = s.querySelector('#reg-dept').value;
+    const password = rpass.value;
+
+    if (!name) { App.toast('Please enter your full name'); return; }
+    if (!email.includes('@')) { App.toast('Please enter a valid email'); return; }
+    if (phoneVal && !phoneVal.startsWith('+994')) { App.toast('Phone number must start with +994'); return; }
+    if (!department) { App.toast('Please select a faculty/program'); return; }
+    if (!password || password.length < 8) { App.toast('Password must be at least 8 characters'); return; }
+
+    try {
+      const user = await window.Api.register({ name, email, phone: phoneVal, role, department, year: role === 'staff' ? 'Staff' : '' , password });
+      DB.currentUser = user;
+      App.toast('Account created!');
+      setTimeout(() => App.navigate('home', {}, false), 500);
+      App.history = [];
+    } catch (e) {
+      App.toast('Registration failed. Email/phone may already exist.');
+    }
+  });
+  s.querySelector('#lang-en').addEventListener('click', () => Lang.set('en'));
+  s.querySelector('#lang-az').addEventListener('click', () => Lang.set('az'));
   return s;
 };
 
 // ===== OTP VERIFICATION =====
 Screens.otp = (ctx) => {
   const s = makeScreen('otp');
+  // OTP is not implemented yet (would require SMS/email provider). Keep screen but clearly message.
   s.innerHTML = `
     <div class="auth-screen" style="padding-top:32px">
       <div class="auth-logo">
-        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+        <img src="assets/bhos-logo.png" alt="Baku Higher Oil School logo" />
       </div>
-      <div class="auth-title">Verify your account</div>
-      <div class="auth-sub">We sent a 6-digit code to<br><strong>${ctx.email || 'your@campus.edu'}</strong></div>
-      <div class="otp-inputs" id="otp-inputs">
-        ${[0,1,2,3,4,5].map(i=>`<input class="otp-input" id="otp-${i}" maxlength="1" type="text" inputmode="numeric" />`).join('')}
-      </div>
-      <button class="btn btn-primary btn-block btn-lg" id="otp-verify-btn">Verify &amp; Continue</button>
-      <div style="text-align:center;margin-top:20px">
-        <div style="font-size:13px;color:var(--text-secondary)">Didn't get the code?</div>
-        <button class="btn btn-secondary" style="margin-top:8px;font-size:13px" id="otp-resend">Resend Code</button>
-      </div>
-      <div class="info-banner" style="margin:20px 0 0">
-        <span style="font-size:20px">💡</span>
-        <div style="font-size:12px;color:var(--info)">For this demo, enter any 6 digits to proceed.</div>
-      </div>
+      <div class="auth-title">Verification</div>
+      <div class="auth-sub">Verification codes will be added later. For now, accounts are verified automatically.</div>
+      <button class="btn btn-primary btn-block btn-lg" onclick="App.navigate('login')">Back to Sign In</button>
     </div>`;
-
-  // OTP auto-advance
-  const inputs = s.querySelectorAll('.otp-input');
-  inputs.forEach((inp, i) => {
-    inp.addEventListener('input', () => {
-      if (inp.value && i < inputs.length - 1) inputs[i + 1].focus();
-    });
-    inp.addEventListener('keydown', e => {
-      if (e.key === 'Backspace' && !inp.value && i > 0) inputs[i - 1].focus();
-    });
-  });
-  // Pre-fill for demo
-  ['1','2','3','4','5','6'].forEach((v,i) => { inputs[i].value = v; });
-
-  s.querySelector('#otp-verify-btn').addEventListener('click', () => {
-    const code = Array.from(inputs).map(i=>i.value).join('');
-    if (code.length < 6) { App.toast('Please enter all 6 digits'); return; }
-    App.toast('✅ Account verified!');
-    setTimeout(() => App.login('u1'), 800);
-  });
-  s.querySelector('#otp-resend').addEventListener('click', () => App.toast('Code resent to ' + (ctx.email || 'your email')));
   return s;
 };

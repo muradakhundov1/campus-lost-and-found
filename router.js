@@ -7,12 +7,14 @@ const App = {
   currentScreen: null,
   screenContext: {},
 
-  init() {
+  async init() {
     // Set clock
     const updateTime = () => {
+      const statusTime = document.getElementById('status-time');
+      if (!statusTime) return;
       const now = new Date();
       const h = now.getHours(); const m = now.getMinutes();
-      document.getElementById('status-time').textContent =
+      statusTime.textContent =
         `${h % 12 || 12}:${m.toString().padStart(2, '0')}`;
     };
     updateTime(); setInterval(updateTime, 30000);
@@ -30,6 +32,31 @@ const App = {
 
     // Modal overlay close
     document.getElementById('modal-overlay').addEventListener('click', App.closeModal);
+
+    // Load config (categories/locations/questions) from backend
+    try {
+      const cfg = await window.Api?.config?.();
+      if (cfg) {
+        DB.categories = cfg.categories || DB.categories;
+        DB.locations = cfg.locations || DB.locations;
+        DB.predefinedQuestions = cfg.predefinedQuestions || DB.predefinedQuestions;
+      }
+    } catch (e) {
+      console.warn('Config load failed:', e);
+    }
+
+    // Restore session if token exists
+    try {
+      if (window.Api?.token?.get?.()) {
+        const me = await window.Api.me();
+        DB.currentUser = me;
+        App.navigate('home', {}, false);
+        return;
+      }
+    } catch (e) {
+      window.Api?.token?.set?.('');
+      DB.currentUser = null;
+    }
 
     // Start app
     App.navigate('splash');
@@ -125,6 +152,7 @@ const App = {
   },
 
   logout() {
+    window.Api?.token?.set?.('');
     DB.currentUser = null;
     App.navigate('login', {}, false);
     App.history = [];

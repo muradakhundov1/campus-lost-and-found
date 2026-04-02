@@ -333,7 +333,11 @@ Screens.notifications = () => {
 // ===== PROFILE =====
 Screens.profile = () => {
   const s = makeScreen('profile');
-  const u = DB.currentUser || DB.users[0];
+  const u = DB.currentUser;
+  if (!u) {
+    s.innerHTML = `${backHeader(Lang.t('account'))}<div class="empty-state"><div class="empty-icon">👤</div><div class="empty-title">${Lang.t('account')}</div><div class="empty-desc">Please sign in to view your profile.</div><button class="btn btn-primary" onclick="App.navigate('login',{},false)">Sign in</button></div>`;
+    return s;
+  }
 
   s.innerHTML = `
     <div class="scroll-area has-bottom-pad">
@@ -344,22 +348,33 @@ Screens.profile = () => {
         <div class="profile-role">${u.department} · ${u.year}</div>
         <div style="margin-top:8px">${u.role==='admin'?'<span class="badge badge-pending">Admin</span>':u.role==='staff'?'<span class="badge badge-info">Staff</span>':'<span class="badge badge-active">Student</span>'}</div>
         <div class="profile-stats">
-          <div class="stat-item"><div class="stat-num">${DB.getMyItems(u.id).length}</div><div class="stat-label">Posts</div></div>
-          <div class="stat-item"><div class="stat-num">${DB.getMyClaims(u.id).length}</div><div class="stat-label">Claims</div></div>
+          <div class="stat-item"><div class="stat-num">${DB.getMyItems(u.id).length}</div><div class="stat-label">${Lang.t('myPosts')}</div></div>
+          <div class="stat-item"><div class="stat-num">${DB.getMyClaims(u.id).length}</div><div class="stat-label">${Lang.t('myClaims')}</div></div>
           <div class="stat-item"><div class="stat-num">${u.resolvedCount}</div><div class="stat-label">Resolved</div></div>
         </div>
       </div>
       <div class="profile-menu">
+        <div class="menu-item" onclick="App.navigate('account')">
+          <div class="menu-item-icon" style="background:var(--info-light)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+          <span class="menu-item-label">${Lang.t('account')}</span>
+          <svg class="menu-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
         <div class="menu-item" onclick="App.navigate('my-posts')">
           <div class="menu-item-icon" style="background:var(--primary-light)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div>
-          <span class="menu-item-label">My Posts</span>
+          <span class="menu-item-label">${Lang.t('myPosts')}</span>
           <span style="font-size:12px;color:var(--text-secondary);margin-right:8px">${DB.getMyItems(u.id).length} items</span>
           <svg class="menu-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
         <div class="menu-item" onclick="App.navigate('my-claims')">
           <div class="menu-item-icon" style="background:var(--success-light)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></div>
-          <span class="menu-item-label">My Claims</span>
+          <span class="menu-item-label">${Lang.t('myClaims')}</span>
           <span style="font-size:12px;color:var(--text-secondary);margin-right:8px">${DB.getMyClaims(u.id).length} claims</span>
+          <svg class="menu-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
+        </div>
+        <div class="menu-item" onclick="App.navigate('language')">
+          <div class="menu-item-icon" style="background:var(--primary-light)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M5 8l6 6"/><path d="M4 14l6-6 2-2"/><path d="M2 20h12"/><path d="M14 20c1.8-1.2 3-3.3 3-6 0-5-4-10-4-10s-4 5-4 10c0 2.7 1.2 4.8 3 6z"/></svg></div>
+          <span class="menu-item-label">${Lang.t('language')}</span>
+          <span style="font-size:12px;color:var(--text-secondary);margin-right:8px">${Lang.current.toUpperCase()}</span>
           <svg class="menu-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
         </div>
         <div class="menu-item" onclick="App.navigate('notifications')">
@@ -374,10 +389,57 @@ Screens.profile = () => {
           <svg class="menu-chevron" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg>
         </div>` : ''}
         <div class="divider" style="margin:8px 0"></div>
-        <div class="menu-item" onclick="App.navigate('login')" style="color:var(--danger)">
+        <div class="menu-item" onclick="App.logout()" style="color:var(--danger)">
           <div class="menu-item-icon" style="background:var(--danger-light)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--danger)" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg></div>
-          <span class="menu-item-label" style="color:var(--danger)">Log Out</span>
+          <span class="menu-item-label" style="color:var(--danger)">${Lang.t('logout')}</span>
         </div>
+      </div>
+    </div>`;
+  return s;
+};
+
+// ===== ACCOUNT INFO =====
+Screens.account = () => {
+  const s = makeScreen('account');
+  const u = DB.currentUser;
+  if (!u) {
+    s.innerHTML = `${backHeader(Lang.t('account'))}<div class="empty-state"><div class="empty-icon">🔒</div><div class="empty-title">${Lang.t('account')}</div><div class="empty-desc">Please sign in.</div><button class="btn btn-primary" onclick="App.navigate('login',{},false)">Sign in</button></div>`;
+    return s;
+  }
+  s.innerHTML = `
+    ${backHeader(Lang.t('account'))}
+    <div class="scroll-area has-bottom-pad" style="padding:16px">
+      <div class="card" style="padding:16px;border:1px solid var(--border-light)">
+        <div style="display:flex;gap:12px;align-items:center;margin-bottom:12px">
+          ${avatarHTML(u, 'avatar-lg')}
+          <div style="flex:1">
+            <div style="font-size:16px;font-weight:800">${u.name}</div>
+            <div style="font-size:12px;color:var(--text-secondary)">${u.role}</div>
+          </div>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div><div style="font-size:11px;color:var(--text-tertiary);font-weight:700">Email</div><div style="font-size:13px;font-weight:600">${u.email || '-'}</div></div>
+          <div><div style="font-size:11px;color:var(--text-tertiary);font-weight:700">Phone</div><div style="font-size:13px;font-weight:600">${u.phone || '-'}</div></div>
+          <div><div style="font-size:11px;color:var(--text-tertiary);font-weight:700">${Lang.t('facultyProgram')}</div><div style="font-size:13px;font-weight:600">${u.department || '-'}</div></div>
+        </div>
+      </div>
+    </div>`;
+  return s;
+};
+
+// ===== LANGUAGE =====
+Screens.language = () => {
+  const s = makeScreen('language');
+  s.innerHTML = `
+    ${backHeader(Lang.t('language'))}
+    <div class="scroll-area has-bottom-pad" style="padding:16px">
+      <div class="menu-item" onclick="Lang.set('en')" style="border:1.5px solid var(--border-light);border-radius:var(--r-lg);margin-bottom:10px">
+        <span class="menu-item-label">${Lang.t('english')}</span>
+        ${Lang.current==='en' ? '<span class="badge badge-active">✓</span>' : ''}
+      </div>
+      <div class="menu-item" onclick="Lang.set('az')" style="border:1.5px solid var(--border-light);border-radius:var(--r-lg)">
+        <span class="menu-item-label">${Lang.t('azeri')}</span>
+        ${Lang.current==='az' ? '<span class="badge badge-active">✓</span>' : ''}
       </div>
     </div>`;
   return s;

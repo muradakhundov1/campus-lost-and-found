@@ -40,6 +40,10 @@ Screens.home = () => {
     <div class="home-header">
       <div class="home-header-top">
         <div class="home-greeting">
+          <div class="home-brand">
+            <img src="assets/bhos-logo.png" alt="Baku Higher Oil School" />
+            <span>BHOS Lost &amp; Found</span>
+          </div>
           <div class="home-greeting-sub">${greeting}</div>
           <h2>${u.name.split(' ')[0]}</h2>
         </div>
@@ -53,7 +57,7 @@ Screens.home = () => {
       </div>
       <div class="home-search-bar" onclick="App.navigate('search')">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <span>Search items, locations...</span>
+        <span>${Lang.t('homeSearchPlaceholder')}</span>
       </div>
     </div>
     <div class="scroll-area has-bottom-pad" id="home-content"></div>`;
