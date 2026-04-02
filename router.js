@@ -8,6 +8,7 @@ const App = {
   screenContext: {},
 
   async init() {
+    if (window.Lang?.syncChrome) window.Lang.syncChrome();
     // Set clock
     const updateTime = () => {
       const statusTime = document.getElementById('status-time');
@@ -178,7 +179,7 @@ function makeScreen(id) {
 
 function backHeader(title, rightHTML = '') {
   return `<div class="nav-header">
-    <button class="back-btn" onclick="App.back()" aria-label="Back">
+    <button class="back-btn" onclick="App.back()" aria-label="${Lang.t('back')}">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
     </button>
     <h2>${title}</h2>
@@ -187,9 +188,9 @@ function backHeader(title, rightHTML = '') {
 }
 
 function itemBadge(type) {
-  return type === 'lost'
-    ? '<span class="badge badge-lost">Lost</span>'
-    : '<span class="badge badge-found">Found</span>';
+  const label = type === 'lost' ? Lang.t('lost') : Lang.t('found');
+  const cls = type === 'lost' ? 'badge-lost' : 'badge-found';
+  return `<span class="badge ${cls}">${label}</span>`;
 }
 
 function statusBadge(status) {
@@ -200,7 +201,15 @@ function statusBadge(status) {
     'Pending': 'badge-pending', 'Approved': 'badge-approved',
     'Rejected': 'badge-rejected', 'Resolved': 'badge-resolved'
   };
-  return `<span class="badge ${map[status] || 'badge-active'}">${status}</span>`;
+  const labelKey = {
+    'Active': 'statusActive', 'Claim Pending': 'statusClaimPending',
+    'Approved for Handover': 'statusApprovedHandover', 'Handover Scheduled': 'statusHandoverScheduled',
+    'Resolved / Returned': 'statusResolvedReturned', 'Removed': 'statusRemoved',
+    'Pending': 'statusPending', 'Approved': 'statusApproved',
+    'Rejected': 'statusRejected', 'Resolved': 'statusResolved'
+  };
+  const label = labelKey[status] ? Lang.t(labelKey[status]) : status;
+  return `<span class="badge ${map[status] || 'badge-active'}">${label}</span>`;
 }
 
 function avatarHTML(user, size = 'avatar-md') {
@@ -210,7 +219,8 @@ function avatarHTML(user, size = 'avatar-md') {
 function formatDate(d) {
   if (!d) return '';
   const dt = new Date(d + (d.includes('T') ? '' : 'T00:00:00'));
-  return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const loc = Lang.current === 'az' ? 'az-AZ' : 'en-US';
+  return dt.toLocaleDateString(loc, { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
 function itemCardHTML(item, onclick) {
