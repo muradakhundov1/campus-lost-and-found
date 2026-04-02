@@ -6,6 +6,8 @@ const DB = {
   currentUser: null,
 
   users: [],
+  userCache: {},
+  _adminStats: null,
   items: [],
   claims: [],
   messages: {},
@@ -48,5 +50,25 @@ const DB = {
   getItemClaims(itemId) { return DB.claims.filter(c => c.itemId === itemId); },
   getItemById(id) { return DB.items.find(i => i.id === id); },
   getClaimById(id) { return DB.claims.find(c => c.id === id); },
-  getUserById(id) { return DB.users.find(u => u.id === id); }
+  getUserById(id) {
+    if (!id) return null;
+    if (id === 'system') return { id: 'system', name: 'System', avatar: '●' };
+    if (DB.currentUser?.id === id) return DB.currentUser;
+    const cached = DB.userCache[id];
+    if (cached) return cached;
+    const u = DB.users.find((x) => x.id === id);
+    if (u) return u;
+    const claim = DB.claims.find((c) => c.claimantId === id);
+    if (claim) {
+      const parts = String(claim.claimantName || '').split(' ').filter(Boolean);
+      const av = parts.map((p) => p[0]).join('').slice(0, 2).toUpperCase() || 'U';
+      return { id, name: claim.claimantName, avatar: av };
+    }
+    const item = DB.items.find((i) => i.posterId === id);
+    if (item) {
+      const pn = item.posterName || '';
+      return { id, name: pn, avatar: pn.slice(0, 2).toUpperCase() || 'U' };
+    }
+    return { id, name: 'User', avatar: '?' };
+  }
 };

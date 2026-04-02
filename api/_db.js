@@ -30,5 +30,5 @@ async function query(text, params) {
   return await p.query(text, params);
 }
 
-module.exports = { query };
+module.exports = { query, getPool };
 

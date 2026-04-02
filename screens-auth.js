@@ -141,6 +141,7 @@ Screens.login = () => {
     }
     DB.currentUser = user;
     try {
+      await App.refreshRemoteData();
       App.navigate('home', {}, false);
       App.history = [];
     } catch (e) {
@@ -268,6 +269,7 @@ Screens.register = () => {
     try {
       const user = await window.Api.register({ name, email, phone: phoneVal, role, department, year: role === 'staff' ? 'Staff' : '', password });
       DB.currentUser = user;
+      await App.refreshRemoteData();
       App.toast(Lang.t('toastAccountCreated'));
       setTimeout(() => App.navigate('home', {}, false), 500);
       App.history = [];

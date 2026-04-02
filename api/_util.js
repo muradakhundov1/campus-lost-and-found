@@ -25,6 +25,10 @@ function token() {
   return crypto.randomBytes(24).toString('hex');
 }
 
+function newId(prefix) {
+  return `${prefix}${Date.now()}${Math.floor(Math.random() * 1000)}`;
+}
+
 function avatarFromName(name) {
   const parts = String(name || '')
     .split(' ')
@@ -40,5 +44,5 @@ function authToken(req) {
   return m ? m[1].trim() : '';
 }
 
-module.exports = { json, readJson, token, avatarFromName, authToken };
+module.exports = { json, readJson, token, newId, avatarFromName, authToken };
 

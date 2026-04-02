@@ -328,18 +328,26 @@ Screens['item-detail'] = (ctx) => {
       </div>
     </div>`;
 
-  window.deleteOwnPost = (itemId) => {
-    const idx = DB.items.findIndex(i => i.id === itemId);
-    if (idx >= 0) DB.items.splice(idx, 1);
-    App.toast(Lang.t('postDeleted'));
-    setTimeout(() => App.navigate('home', {}, false), 600);
+  window.deleteOwnPost = async (itemId) => {
+    try {
+      await window.Api.itemsDelete(itemId);
+      const idx = DB.items.findIndex(i => i.id === itemId);
+      if (idx >= 0) DB.items.splice(idx, 1);
+      App.toast(Lang.t('postDeleted'));
+      setTimeout(() => App.navigate('home', {}, false), 600);
+    } catch (e) {
+      App.toast(Lang.t('toastRegDb'));
+    }
   };
-  window.adminRemovePost = (itemId) => {
-    const target = DB.getItemById(itemId);
-    if (target) target.status = 'Removed';
-    DB.adminLog.unshift({ id: 'al'+Date.now(), action: 'Post Removed', target: target?.title, note: 'Admin removed from item detail.', adminId: u?.id, at: new Date().toISOString() });
-    App.toast(Lang.t('postRemovedAdmin'));
-    App.navigate('item-detail', { itemId });
+  window.adminRemovePost = async (itemId) => {
+    try {
+      await window.Api.itemsPatch(itemId, { status: 'Removed' });
+      await App.refreshRemoteData();
+      App.toast(Lang.t('postRemovedAdmin'));
+      App.navigate('item-detail', { itemId });
+    } catch (e) {
+      App.toast(Lang.t('toastRegDb'));
+    }
   };
   return s;
 };
@@ -477,24 +485,35 @@ Screens['create-post'] = (ctx) => {
     });
   }
 
-  s.querySelector('#post-submit-btn').addEventListener('click', () => {
+  s.querySelector('#post-submit-btn').addEventListener('click', async () => {
     const title = s.querySelector('#post-title').value;
     const cat = s.querySelector('#post-cat').value;
     const loc = s.querySelector('#post-loc').value;
     if (!title.trim() || !cat || !loc) { App.toast(Lang.t('fillTitleCatLoc')); return; }
-    const newItem = {
-      id: 'i' + Date.now(), type, title, category: cat,
-      description: s.querySelector('#post-desc').value || 'No description.',
-      location: loc, date: s.querySelector('#post-date').value,
+    if (!DB.currentUser?.id) { App.toast(Lang.t('signInShort')); return; }
+
+    const payload = {
+      type,
+      title: title.trim(),
+      category: cat,
+      description: s.querySelector('#post-desc').value.trim() || 'No description.',
+      location: loc,
+      date: s.querySelector('#post-date').value,
       time: s.querySelector('#post-time').value,
-      emoji: '',
-      status: 'Active', posterId: DB.currentUser?.id || 'u1', posterName: DB.currentUser?.name.split(' ')[0] + ' ' + (DB.currentUser?.name.split(' ')[1]?.[0] || '') + '.',
-      verificationQuestions: isFound ? questions.filter(q=>q.text.trim()).map((q,i)=>({id:'nq'+i,text:q.text})) : [],
-      claimCount: 0, resolvedAt: null
+      verificationQuestions: isFound
+        ? questions.filter(q => q.text.trim()).map(q => ({ text: q.text.trim() }))
+        : []
     };
-    DB.items.unshift(newItem);
-    App.toast(Lang.t('itemPostedOk'));
-    setTimeout(() => App.navigate('item-detail', { itemId: newItem.id }), 600);
+
+    try {
+      const { item } = await window.Api.itemsCreate(payload);
+      DB.items.unshift(item);
+      App.toast(Lang.t('itemPostedOk'));
+      setTimeout(() => App.navigate('item-detail', { itemId: item.id }), 600);
+    } catch (e) {
+      if (e.status === 401) App.toast(Lang.t('signInShort'));
+      else App.toast(Lang.t('toastRegDb'));
+    }
   });
   return s;
 };
@@ -540,27 +559,26 @@ Screens['finder-response'] = (ctx) => {
       <button class="btn btn-primary btn-block btn-lg" id="submit-finder-btn">${Lang.t('submitResponse')}</button>
     </div>`;
 
-  s.querySelector('#submit-finder-btn').addEventListener('click', () => {
+  s.querySelector('#submit-finder-btn').addEventListener('click', async () => {
     const msg = s.querySelector('#finder-msg').value;
     if (!msg.trim()) { App.toast(Lang.t('writeMessageOwner')); return; }
     const u = DB.currentUser;
+    if (!u?.id) { App.toast(Lang.t('signInShort')); return; }
     const meeting = s.querySelector('#finder-meeting').value;
-    const newResponse = {
-      id: 'c' + Date.now(), itemId: item.id, claimantId: u.id, claimantName: u.name,
-      isFinderResponse: true,
-      status: 'Pending', submittedAt: new Date().toISOString(),
-      answers: [
-        { questionId: 'msg', question: 'Message to owner', answer: msg },
-        { questionId: 'desc', question: 'Item description', answer: s.querySelector('#finder-desc').value || '(not provided)' },
-        ...(meeting ? [{ questionId: 'meeting', question: 'Suggested meeting point', answer: meeting }] : [])
-      ],
-      chatEnabled: false, reviewNote: ''
-    };
-    DB.claims.push(newResponse);
-    item.claimCount = (item.claimCount || 0) + 1;
-    DB.notifications.unshift({ id: 'nn' + Date.now(), type: 'finder', icon: '', title: Lang.t('notifFinderFoundTitle'), desc: Lang.t('notifFinderFoundDesc', { name: u.name, title: item.title }), time: Lang.t('justNow'), read: false, screen: 'claim-review', itemId: item.id });
-    App.toast(Lang.t('responseOk'));
-    setTimeout(() => App.navigate('item-detail', { itemId: item.id }), 800);
+    const answers = [
+      { questionId: 'msg', question: 'Message to owner', answer: msg },
+      { questionId: 'desc', question: 'Item description', answer: s.querySelector('#finder-desc').value || '(not provided)' },
+      ...(meeting ? [{ questionId: 'meeting', question: 'Suggested meeting point', answer: meeting }] : [])
+    ];
+    try {
+      await window.Api.itemClaimsPost(item.id, { answers, isFinderResponse: true });
+      await App.refreshRemoteData();
+      App.toast(Lang.t('responseOk'));
+      setTimeout(() => App.navigate('item-detail', { itemId: item.id }), 800);
+    } catch (e) {
+      if (e.status === 401) App.toast(Lang.t('signInShort'));
+      else App.toast(Lang.t('toastRegDb'));
+    }
   });
   return s;
 };

@@ -45,19 +45,25 @@ Screens['claim-submit'] = (ctx) => {
     ta.addEventListener('input', () => { answers[+ta.dataset.idx] = ta.value; });
   });
 
-  s.querySelector('#submit-claim-btn').addEventListener('click', () => {
+  s.querySelector('#submit-claim-btn').addEventListener('click', async () => {
     const u = DB.currentUser;
-    const newClaim = {
-      id: 'c' + Date.now(), itemId: item.id, claimantId: u.id, claimantName: u.name,
-      status: 'Pending', submittedAt: new Date().toISOString(),
-      answers: questions.map((q, i) => ({ questionId: q.id, question: q.text, answer: answers[i] || '(no answer)' })),
-      chatEnabled: false, reviewNote: ''
-    };
-    DB.claims.push(newClaim);
-    item.status = 'Claim Pending'; item.claimCount = (item.claimCount || 0) + 1;
-    DB.notifications.unshift({ id: 'nn' + Date.now(), type: 'claim', icon: '', title: Lang.t('notifClaimSubmittedTitle'), desc: Lang.t('notifClaimSubmittedDesc', { title: item.title }), time: Lang.t('justNow'), read: false });
-    App.toast(Lang.t('claimOk'));
-    setTimeout(() => App.navigate('item-detail', { itemId: item.id }), 800);
+    if (!u?.id) { App.toast(Lang.t('signInShort')); return; }
+    const answersPayload = questions.map((q, i) => ({
+      questionId: q.id,
+      question: q.text,
+      answer: answers[i] || '(no answer)'
+    }));
+    const notes = s.querySelector('#claim-notes').value.trim();
+    if (notes) answersPayload.push({ questionId: 'notes', question: 'Additional notes', answer: notes });
+    try {
+      await window.Api.itemClaimsPost(item.id, { answers: answersPayload, isFinderResponse: false });
+      await App.refreshRemoteData();
+      App.toast(Lang.t('claimOk'));
+      setTimeout(() => App.navigate('item-detail', { itemId: item.id }), 800);
+    } catch (e) {
+      if (e.status === 401) App.toast(Lang.t('signInShort'));
+      else App.toast(Lang.t('toastRegDb'));
+    }
   });
   return s;
 };
@@ -66,10 +72,11 @@ Screens['claim-submit'] = (ctx) => {
 Screens['claim-review'] = (ctx) => {
   const s = makeScreen('claim-review');
   const item = DB.getItemById(ctx.itemId) || DB.items[0];
-  const claims = DB.getItemClaims(item.id);
+  let claims = DB.getItemClaims(item.id);
   const isLostItem = item.type === 'lost';
 
   const renderClaims = () => {
+    claims = DB.getItemClaims(item.id);
     claimList.innerHTML = claims.length === 0
       ? `<div class="empty-state"><div class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.5"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="empty-title">${isLostItem ? Lang.t('noResponsesYet') : Lang.t('noClaimsYetShort')}</div></div>`
       : claims.map(claim => {
@@ -106,22 +113,25 @@ Screens['claim-review'] = (ctx) => {
   const claimList = s.querySelector('#claim-list');
   renderClaims();
 
-  window.approveClaim = (claimId) => {
-    const claim = DB.getClaimById(claimId);
-    claim.status = 'Approved'; claim.chatEnabled = true;
-    item.status = 'Approved for Handover';
-    if (!DB.messages[claimId]) DB.messages[claimId] = [];
-    DB.messages[claimId].unshift({ id: 'ms1', senderId: 'system', text: Lang.t('systemChatApproved'), time: new Date().toLocaleTimeString(timeLocale(), { hour: '2-digit', minute: '2-digit' }), date: new Date().toISOString().slice(0, 10) });
-    DB.notifications.unshift({ id: 'nn2', type: 'approved', icon: '', title: isLostItem ? Lang.t('notifResponseAcceptedTitle') : Lang.t('notifClaimApprovedTitle'), desc: isLostItem ? Lang.t('notifApproveDescLost', { name: claim.claimantName, title: item.title }) : Lang.t('notifApproveDescFound', { name: claim.claimantName, title: item.title }), time: Lang.t('justNow'), read: false });
-    renderClaims();
-    App.toast(isLostItem ? Lang.t('responseAcceptedChat') : Lang.t('claimApprovedChat'));
+  window.approveClaim = async (claimId) => {
+    try {
+      await window.Api.claimApprove(claimId);
+      await App.refreshRemoteData();
+      renderClaims();
+      App.toast(isLostItem ? Lang.t('responseAcceptedChat') : Lang.t('claimApprovedChat'));
+    } catch (e) {
+      App.toast(Lang.t('toastRegDb'));
+    }
   };
-  window.rejectClaim = (claimId) => {
-    const claim = DB.getClaimById(claimId);
-    claim.status = 'Rejected'; claim.reviewNote = Lang.t('rejectMatchNote');
-    DB.notifications.unshift({ id: 'nn3', type: 'rejected', icon: '', title: isLostItem ? Lang.t('notifResponseRejectedTitle') : Lang.t('notifClaimRejectedTitle'), desc: isLostItem ? Lang.t('notifRejectDescLost', { name: claim.claimantName }) : Lang.t('notifRejectDescFound', { name: claim.claimantName }), time: Lang.t('justNow'), read: false });
-    renderClaims();
-    App.toast(Lang.t('claimRejected'));
+  window.rejectClaim = async (claimId) => {
+    try {
+      await window.Api.claimReject(claimId, Lang.t('rejectMatchNote'));
+      await App.refreshRemoteData();
+      renderClaims();
+      App.toast(Lang.t('claimRejected'));
+    } catch (e) {
+      App.toast(Lang.t('toastRegDb'));
+    }
   };
   return s;
 };
@@ -187,23 +197,32 @@ Screens.chat = (ctx) => {
   const input = s.querySelector('#chat-input');
   renderMsgs();
 
-  const sendMsg = (text) => {
+  (async () => {
+    try {
+      const { messages } = await window.Api.claimMessagesGet(claim.id);
+      DB.messages[claim.id] = messages;
+      msgs = messages;
+      renderMsgs();
+    } catch (e) {
+      console.warn('Chat load failed:', e);
+    }
+  })();
+
+  const sendMsg = async (text) => {
     if (!text.trim()) return;
-    const now = new Date();
-    const newMsg = { id: 'm' + Date.now(), senderId: u?.id || 'u1', text: text.trim(), time: now.toLocaleTimeString(timeLocale(), { hour: '2-digit', minute: '2-digit' }), date: now.toISOString().slice(0, 10) };
-    if (!DB.messages[claim.id]) DB.messages[claim.id] = [];
-    DB.messages[claim.id].push(newMsg);
-    msgs = DB.messages[claim.id];
-    renderMsgs();
-    input.value = '';
-    // Auto-reply
-    setTimeout(() => {
-      const reply = { id: 'm' + Date.now(), senderId: otherId, text: Lang.t('chatBotReply'), time: new Date().toLocaleTimeString(timeLocale(), { hour: '2-digit', minute: '2-digit' }), date: new Date().toISOString().slice(0, 10) };
-      DB.messages[claim.id].push(reply); msgs = DB.messages[claim.id]; renderMsgs();
-    }, 1500);
+    try {
+      const { message } = await window.Api.claimMessagesPost(claim.id, text.trim());
+      if (!DB.messages[claim.id]) DB.messages[claim.id] = [];
+      DB.messages[claim.id].push(message);
+      msgs = DB.messages[claim.id];
+      renderMsgs();
+      input.value = '';
+    } catch (e) {
+      App.toast(Lang.t('toastRegDb'));
+    }
   };
 
-  window.sendQuick = sendMsg;
+  window.sendQuick = (t) => sendMsg(t);
   s.querySelector('#chat-send').addEventListener('click', () => sendMsg(input.value));
   input.addEventListener('keydown', e => { if (e.key === 'Enter') sendMsg(input.value); });
   return s;
@@ -267,16 +286,27 @@ Screens.handover = (ctx) => {
         </div>`}
     </div>`;
 
-  window.updateHandover = () => {
-    if (claim) { claim.handoverStatus = 'Scheduled'; claim.meetingPoint = 'Main Building Lobby'; claim.meetingTime = 'Mar 22, 2026 at 2:00 PM'; }
-    App.toast(Lang.t('handoverScheduled'));
-    App.navigate('handover', { claimId: ctx.claimId });
+  window.updateHandover = async () => {
+    if (!claim) return;
+    try {
+      await window.Api.claimHandover(claim.id, { action: 'schedule' });
+      await App.refreshRemoteData();
+      App.toast(Lang.t('handoverScheduled'));
+      App.navigate('handover', { claimId: ctx.claimId });
+    } catch (e) {
+      App.toast(Lang.t('toastRegDb'));
+    }
   };
-  window.confirmHandover = () => {
-    if (claim) { claim.handoverStatus = 'Completed'; claim.status = 'Resolved'; }
-    if (item) item.status = 'Resolved / Returned';
-    App.toast(Lang.t('handoverConfirmed'));
-    App.navigate('handover', { claimId: ctx.claimId });
+  window.confirmHandover = async () => {
+    if (!claim) return;
+    try {
+      await window.Api.claimHandover(claim.id, { action: 'complete' });
+      await App.refreshRemoteData();
+      App.toast(Lang.t('handoverConfirmed'));
+      App.navigate('handover', { claimId: ctx.claimId });
+    } catch (e) {
+      App.toast(Lang.t('toastRegDb'));
+    }
   };
   return s;
 };
@@ -318,7 +348,7 @@ Screens.messages = () => {
 Screens.notifications = () => {
   const s = makeScreen('notifications');
   s.innerHTML = `
-    ${backHeader(Lang.t('notifications'), `<button class="icon-btn" onclick="DB.notifications.forEach(n=>n.read=true);App.navigate('notifications')" style="font-size:11px;color:var(--primary);width:auto;padding:0 4px">${Lang.t('markAllRead')}</button>`)}
+    ${backHeader(Lang.t('notifications'), `<button class="icon-btn" id="notif-mark-all" style="font-size:11px;color:var(--primary);width:auto;padding:0 4px">${Lang.t('markAllRead')}</button>`)}
     <div class="scroll-area has-bottom-pad">
       ${DB.notifications.length === 0 ? `<div class="empty-state"><div class="empty-icon"><svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.5"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></div><div class="empty-title">${Lang.t('noNotifications')}</div></div>` :
       DB.notifications.map(n => `
@@ -331,6 +361,15 @@ Screens.notifications = () => {
           <div class="notif-time">${n.time}</div>
         </div>`).join('')}
     </div>`;
+  s.querySelector('#notif-mark-all')?.addEventListener('click', async () => {
+    try {
+      await window.Api.notificationsMarkAllRead();
+      await App.refreshRemoteData();
+      App.navigate('notifications');
+    } catch (e) {
+      App.toast(Lang.t('toastRegDb'));
+    }
+  });
   return s;
 };
 
@@ -528,11 +567,24 @@ Screens.report = (ctx) => {
     });
   });
 
-  s.querySelector('#submit-report-btn').addEventListener('click', () => {
-    const newReport = { id: 'r' + Date.now(), type: ctx.targetType, targetId: ctx.targetId, targetTitle: ctx.targetTitle, reporterId: DB.currentUser?.id, reason: Lang.t(selectedReasonKey), detail: s.querySelector('#report-detail').value, severity: 'medium', status: 'pending', createdAt: new Date().toISOString() };
-    DB.reports.push(newReport);
-    App.toast(Lang.t('reportOk'));
-    setTimeout(() => App.back(), 800);
+  s.querySelector('#submit-report-btn').addEventListener('click', async () => {
+    if (!selectedReasonKey) return;
+    if (!DB.currentUser?.id) { App.toast(Lang.t('signInShort')); return; }
+    try {
+      await window.Api.reportsCreate({
+        type: ctx.targetType,
+        targetId: ctx.targetId,
+        targetTitle: ctx.targetTitle,
+        reason: Lang.t(selectedReasonKey),
+        detail: s.querySelector('#report-detail').value,
+        severity: 'medium'
+      });
+      await App.refreshRemoteData();
+      App.toast(Lang.t('reportOk'));
+      setTimeout(() => App.back(), 800);
+    } catch (e) {
+      App.toast(Lang.t('toastRegDb'));
+    }
   });
   return s;
 };
@@ -561,6 +613,11 @@ Screens['admin-dashboard'] = () => {
     return s;
   }
   const pendingReports = DB.reports.filter(r => r.status === 'pending');
+  const st = DB._adminStats;
+  const totalItems = st?.itemCount ?? DB.items.length;
+  const pendingCount = st?.pendingReports ?? pendingReports.length;
+  const resolvedCount = DB.items.filter(i => i.status === 'Resolved / Returned').length;
+  const userCount = st?.userCount ?? DB.users.length;
   s.innerHTML = `
     <div class="nav-header">
       <button class="back-btn" onclick="App.back()"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polyline points="15 18 9 12 15 6"/></svg></button>
@@ -569,10 +626,10 @@ Screens['admin-dashboard'] = () => {
     </div>
     <div class="scroll-area has-bottom-pad">
       <div class="admin-stat-grid">
-        <div class="admin-stat-card"><div class="admin-stat-num" style="color:var(--primary)">${DB.items.length}</div><div class="admin-stat-label">${Lang.t('totalItems')}</div></div>
-        <div class="admin-stat-card"><div class="admin-stat-num" style="color:var(--warning)">${pendingReports.length}</div><div class="admin-stat-label">${Lang.t('pendingReports')}</div></div>
-        <div class="admin-stat-card"><div class="admin-stat-num" style="color:var(--success)">${DB.items.filter(i=>i.status==='Resolved / Returned').length}</div><div class="admin-stat-label">${Lang.t('itemsResolved')}</div></div>
-        <div class="admin-stat-card"><div class="admin-stat-num" style="color:var(--text-primary)">${DB.users.length}</div><div class="admin-stat-label">${Lang.t('users')}</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:var(--primary)">${totalItems}</div><div class="admin-stat-label">${Lang.t('totalItems')}</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:var(--warning)">${pendingCount}</div><div class="admin-stat-label">${Lang.t('pendingReports')}</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:var(--success)">${resolvedCount}</div><div class="admin-stat-label">${Lang.t('itemsResolved')}</div></div>
+        <div class="admin-stat-card"><div class="admin-stat-num" style="color:var(--text-primary)">${userCount}</div><div class="admin-stat-label">${Lang.t('users')}</div></div>
       </div>
       <div class="section-divider"></div>
       <div class="section-header"><span class="section-title">${Lang.t('reportsQueue')}</span><span class="badge badge-pending">${Lang.t('reportsPendingCount', { count: pendingReports.length })}</span></div>
@@ -629,13 +686,17 @@ Screens['admin-mod'] = (ctx) => {
       ${report.status === 'reviewed' ? `<div class="info-banner success" style="margin-top:16px"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--success)" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg><div style="font-size:12px;color:var(--success)">${Lang.t('reportReviewed')}</div></div>` : ''}
     </div>`;
 
-  window.adminAction = (kind) => {
+  window.adminAction = async (kind) => {
     const labels = { warning: Lang.t('issueWarning'), remove: Lang.t('removePostAction'), suspend: Lang.t('suspendUser'), dismiss: Lang.t('dismissReport') };
     const actionLabel = labels[kind] || kind;
-    report.status = 'reviewed';
-    DB.adminLog.unshift({ id: 'al' + Date.now(), action: actionLabel, target: report.targetTitle, note: Lang.t('actionTaken', { action: actionLabel }), adminId: DB.currentUser?.id, at: new Date().toISOString() });
-    App.toast(Lang.t('actionTaken', { action: actionLabel }));
-    setTimeout(() => App.back(), 800);
+    try {
+      await window.Api.adminAction({ reportId: report.id, action: kind });
+      await App.refreshRemoteData();
+      App.toast(Lang.t('actionTaken', { action: actionLabel }));
+      setTimeout(() => App.back(), 800);
+    } catch (e) {
+      App.toast(Lang.t('toastRegDb'));
+    }
   };
   return s;
 };

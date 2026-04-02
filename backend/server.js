@@ -40,6 +40,68 @@ function requireAuth(req, res, next) {
   next();
 }
 
+function mapClaimRow(row, answerRows) {
+  const answers = (answerRows || []).map((a) => ({
+    questionId: a.question_id,
+    question: a.question,
+    answer: a.answer
+  }));
+  return {
+    id: row.id,
+    itemId: row.item_id,
+    claimantId: row.claimant_id,
+    claimantName: row.claimant_name,
+    isFinderResponse: Boolean(row.is_finder_response),
+    status: row.status,
+    submittedAt: row.submitted_at,
+    chatEnabled: Boolean(row.chat_enabled),
+    reviewNote: row.review_note || '',
+    meetingPoint: row.meeting_point,
+    meetingTime: row.meeting_time,
+    handoverStatus: row.handover_status,
+    answers
+  };
+}
+
+function mapMessageRow(row) {
+  return {
+    id: row.id,
+    senderId: row.sender_id,
+    text: row.text,
+    time: row.time,
+    date: row.date
+  };
+}
+
+function mapNotificationRow(row) {
+  return {
+    id: row.id,
+    type: row.type,
+    title: row.title,
+    desc: row.description,
+    time: row.time_label || '',
+    read: Boolean(row.read),
+    screen: row.screen,
+    claimId: row.claim_id,
+    itemId: row.item_id
+  };
+}
+
+function mapReportRow(row) {
+  return {
+    id: row.id,
+    type: row.type,
+    targetId: row.target_id,
+    targetTitle: row.target_title,
+    reporterId: row.reporter_id,
+    reason: row.reason,
+    detail: row.detail,
+    severity: row.severity,
+    status: row.status,
+    createdAt: row.created_at
+  };
+}
+
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
 // ===== Auth =====
@@ -216,6 +278,28 @@ app.get('/api/items/:id', (req, res) => {
   res.json({ item: { ...it, verificationQuestions: qRows.map((r) => ({ id: r.id, text: r.text })) } });
 });
 
+app.delete('/api/items/:id', requireAuth, (req, res) => {
+  const db = getDb();
+  const it = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
+  if (!it) return res.status(404).json({ error: 'not_found' });
+  if (it.poster_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'forbidden' });
+  db.prepare('DELETE FROM items WHERE id = ?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+app.patch('/api/items/:id', requireAuth, (req, res) => {
+  const status = req.body?.status;
+  if (!status || typeof status !== 'string') return res.status(400).json({ error: 'invalid_request' });
+  const db = getDb();
+  const it = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
+  if (!it) return res.status(404).json({ error: 'not_found' });
+  if (it.poster_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'forbidden' });
+  db.prepare('UPDATE items SET status = ?, updated_at = ? WHERE id = ?').run(status, nowIso(), req.params.id);
+  const item = db.prepare('SELECT * FROM items WHERE id = ?').get(req.params.id);
+  const qRows = db.prepare('SELECT id,text,position FROM item_verification_questions WHERE item_id = ? ORDER BY position ASC').all(item.id);
+  res.json({ item: { ...item, verificationQuestions: qRows.map((r) => ({ id: r.id, text: r.text })) } });
+});
+
 app.post('/api/items', requireAuth, (req, res) => {
   const body = z
     .object({
@@ -280,12 +364,9 @@ app.get('/api/items/:id/claims', requireAuth, (req, res) => {
   if (!item) return res.status(404).json({ error: 'not_found' });
   if (item.poster_id !== req.user.id && req.user.role !== 'admin') return res.status(403).json({ error: 'forbidden' });
   const claims = db.prepare('SELECT * FROM claims WHERE item_id = ? ORDER BY submitted_at DESC').all(item.id);
-  const answersStmt = db.prepare('SELECT question_id,question,answer FROM claim_answers WHERE claim_id = ?');
+  const answersStmt = db.prepare('SELECT question_id,question,answer FROM claim_answers WHERE claim_id = ? ORDER BY id');
   res.json({
-    claims: claims.map((c) => ({
-      ...c,
-      answers: answersStmt.all(c.id).map((a) => ({ questionId: a.question_id, question: a.question, answer: a.answer }))
-    }))
+    claims: claims.map((c) => mapClaimRow(c, answersStmt.all(c.id)))
   });
 });
 
@@ -362,6 +443,64 @@ app.post('/api/claims/:id/reject', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+app.get('/api/claims', requireAuth, (req, res) => {
+  const db = getDb();
+  const rows = db
+    .prepare(
+      `SELECT c.* FROM claims c
+       JOIN items i ON i.id = c.item_id
+       WHERE c.claimant_id = ? OR i.poster_id = ?
+       ORDER BY c.submitted_at DESC`
+    )
+    .all(req.user.id, req.user.id);
+  const answersStmt = db.prepare('SELECT question_id,question,answer FROM claim_answers WHERE claim_id = ? ORDER BY id');
+  res.json({ claims: rows.map((row) => mapClaimRow(row, answersStmt.all(row.id))) });
+});
+
+app.post('/api/claims/:id/handover', requireAuth, (req, res) => {
+  const body = z
+    .object({
+      action: z.enum(['schedule', 'complete']),
+      meetingPoint: z.string().optional(),
+      meetingTime: z.string().optional()
+    })
+    .safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: 'invalid_request' });
+  const db = getDb();
+  const claim = db.prepare('SELECT * FROM claims WHERE id = ?').get(req.params.id);
+  if (!claim) return res.status(404).json({ error: 'not_found' });
+  const item = db.prepare('SELECT * FROM items WHERE id = ?').get(claim.item_id);
+  if (!item) return res.status(404).json({ error: 'not_found' });
+  const isParticipant =
+    claim.claimant_id === req.user.id || item.poster_id === req.user.id || req.user.role === 'admin';
+  if (!isParticipant) return res.status(403).json({ error: 'forbidden' });
+
+  if (body.data.action === 'schedule') {
+    const mp = body.data.meetingPoint || 'Main Building Lobby';
+    const mt = body.data.meetingTime || 'Mar 22, 2026 at 2:00 PM';
+    db.prepare('UPDATE claims SET handover_status = ?, meeting_point = ?, meeting_time = ? WHERE id = ?').run(
+      'Scheduled',
+      mp,
+      mt,
+      claim.id
+    );
+  } else {
+    db.prepare("UPDATE claims SET handover_status = 'Completed', status = 'Resolved' WHERE id = ?").run(claim.id);
+    db.prepare("UPDATE items SET status = 'Resolved / Returned', resolved_at = ?, updated_at = ? WHERE id = ?").run(
+      new Date().toISOString().slice(0, 10),
+      nowIso(),
+      item.id
+    );
+  }
+
+  const crow = db.prepare('SELECT * FROM claims WHERE id = ?').get(claim.id);
+  const ans = db.prepare('SELECT question_id, question, answer FROM claim_answers WHERE claim_id = ? ORDER BY id').all(claim.id);
+  const irow = db.prepare('SELECT * FROM items WHERE id = ?').get(item.id);
+  const qRows = db.prepare('SELECT id,text,position FROM item_verification_questions WHERE item_id = ? ORDER BY position ASC').all(irow.id);
+  const mappedItem = { ...irow, verificationQuestions: qRows.map((r) => ({ id: r.id, text: r.text })) };
+  res.json({ claim: mapClaimRow(crow, ans), item: mappedItem });
+});
+
 // ===== Messages =====
 app.get('/api/claims/:id/messages', requireAuth, (req, res) => {
   const db = getDb();
@@ -371,7 +510,7 @@ app.get('/api/claims/:id/messages', requireAuth, (req, res) => {
   const isParticipant = claim.claimant_id === req.user.id || item?.poster_id === req.user.id || req.user.role === 'admin';
   if (!isParticipant) return res.status(403).json({ error: 'forbidden' });
   const msgs = db.prepare('SELECT * FROM messages WHERE claim_id = ? ORDER BY created_at ASC').all(claim.id);
-  res.json({ messages: msgs });
+  res.json({ messages: msgs.map(mapMessageRow) });
 });
 
 app.post('/api/claims/:id/messages', requireAuth, (req, res) => {
@@ -386,8 +525,9 @@ app.post('/api/claims/:id/messages', requireAuth, (req, res) => {
   if (!isParticipant) return res.status(403).json({ error: 'forbidden' });
 
   const d = new Date();
+  const mid = id('m');
   db.prepare('INSERT INTO messages (id,claim_id,sender_id,text,time,date,created_at) VALUES (?,?,?,?,?,?,?)').run(
-    id('m'),
+    mid,
     claim.id,
     req.user.id,
     body.data.text.trim(),
@@ -395,7 +535,8 @@ app.post('/api/claims/:id/messages', requireAuth, (req, res) => {
     d.toISOString().slice(0, 10),
     nowIso()
   );
-  res.status(201).json({ ok: true });
+  const row = db.prepare('SELECT * FROM messages WHERE id = ?').get(mid);
+  res.status(201).json({ message: mapMessageRow(row) });
 });
 
 // ===== Reports (minimal) =====
@@ -403,7 +544,7 @@ app.get('/api/reports', requireAuth, (req, res) => {
   if (req.user.role !== 'admin') return res.status(403).json({ error: 'forbidden' });
   const db = getDb();
   const rows = db.prepare('SELECT * FROM reports ORDER BY created_at DESC').all();
-  res.json({ reports: rows });
+  res.json({ reports: rows.map(mapReportRow) });
 });
 
 app.post('/api/reports', requireAuth, (req, res) => {
@@ -425,6 +566,85 @@ app.post('/api/reports', requireAuth, (req, res) => {
     'INSERT INTO reports (id,type,target_id,target_title,reporter_id,reason,detail,severity,status,created_at) VALUES (?,?,?,?,?,?,?,?,?,?)'
   ).run(reportId, r.type, r.targetId || null, r.targetTitle || null, req.user.id, r.reason, r.detail || '', r.severity, 'pending', nowIso());
   res.status(201).json({ id: reportId });
+});
+
+app.get('/api/notifications', requireAuth, (req, res) => {
+  const db = getDb();
+  const rows = db
+    .prepare('SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 200')
+    .all(req.user.id);
+  res.json({ notifications: rows.map(mapNotificationRow) });
+});
+
+app.post('/api/notifications', requireAuth, (req, res) => {
+  if (req.body?.markAllRead) {
+    const db = getDb();
+    db.prepare('UPDATE notifications SET read = 1 WHERE user_id = ?').run(req.user.id);
+    return res.json({ ok: true });
+  }
+  return res.status(400).json({ error: 'invalid_request' });
+});
+
+app.get('/api/admin/stats', requireAuth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'forbidden' });
+  const db = getDb();
+  const userCount = db.prepare('SELECT count(*) AS c FROM users').get().c;
+  const itemCount = db.prepare('SELECT count(*) AS c FROM items').get().c;
+  const pendingReports = db.prepare("SELECT count(*) AS c FROM reports WHERE status = 'pending'").get().c;
+  res.json({ userCount, itemCount, pendingReports });
+});
+
+app.get('/api/admin/log', requireAuth, (req, res) => {
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'forbidden' });
+  const db = getDb();
+  const rows = db.prepare('SELECT id, action, target, note, admin_id, at FROM admin_log ORDER BY at DESC LIMIT 100').all();
+  const adminLog = rows.map((row) => ({
+    id: row.id,
+    action: row.action,
+    target: row.target,
+    note: row.note,
+    adminId: row.admin_id,
+    at: row.at
+  }));
+  res.json({ adminLog });
+});
+
+const ADMIN_LABELS = {
+  warning: 'Warning issued to user',
+  remove: 'Post removed',
+  suspend: 'User suspended',
+  dismiss: 'Report dismissed'
+};
+
+app.post('/api/admin/actions', requireAuth, (req, res) => {
+  const body = z
+    .object({
+      reportId: z.string().min(1),
+      action: z.enum(['warning', 'remove', 'suspend', 'dismiss'])
+    })
+    .safeParse(req.body);
+  if (!body.success) return res.status(400).json({ error: 'invalid_request' });
+  if (req.user.role !== 'admin') return res.status(403).json({ error: 'forbidden' });
+  const db = getDb();
+  const r = db.prepare('SELECT * FROM reports WHERE id = ?').get(body.data.reportId);
+  if (!r) return res.status(404).json({ error: 'not_found' });
+  db.prepare("UPDATE reports SET status = 'reviewed' WHERE id = ?").run(body.data.reportId);
+  db.prepare('INSERT INTO admin_log (id, action, target, note, admin_id, at) VALUES (?,?,?,?,?,?)').run(
+    id('al'),
+    ADMIN_LABELS[body.data.action],
+    r.target_title || '',
+    `Report ${body.data.reportId}`,
+    req.user.id,
+    nowIso()
+  );
+  res.json({ ok: true });
+});
+
+app.get('/api/users/:id', (req, res) => {
+  const db = getDb();
+  const u = db.prepare('SELECT id, name, avatar FROM users WHERE id = ?').get(req.params.id);
+  if (!u) return res.status(404).json({ error: 'not_found' });
+  res.json({ user: { id: u.id, name: u.name, avatar: u.avatar } });
 });
 
 const PORT = process.env.PORT ? Number(process.env.PORT) : 8787;

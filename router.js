@@ -7,6 +7,52 @@ const App = {
   currentScreen: null,
   screenContext: {},
 
+  async refreshRemoteData() {
+    try {
+      const { items } = await window.Api.itemsList();
+      if (Array.isArray(items)) DB.items = items;
+    } catch (e) {
+      console.warn('Items load failed:', e);
+    }
+    if (!window.Api.token.get()) {
+      DB.claims = [];
+      DB.messages = {};
+      DB.notifications = [];
+      DB.reports = [];
+      DB.adminLog = [];
+      DB._adminStats = null;
+      return;
+    }
+    try {
+      const { claims } = await window.Api.claimsList();
+      if (Array.isArray(claims)) DB.claims = claims;
+    } catch (e) {
+      console.warn('Claims load failed:', e);
+    }
+    try {
+      const { notifications } = await window.Api.notificationsList();
+      if (Array.isArray(notifications)) DB.notifications = notifications;
+    } catch (e) {
+      console.warn('Notifications load failed:', e);
+    }
+    try {
+      if (DB.currentUser?.role === 'admin') {
+        const { reports } = await window.Api.reportsList();
+        DB.reports = Array.isArray(reports) ? reports : [];
+        const stats = await window.Api.adminStats();
+        DB._adminStats = stats;
+        const { adminLog } = await window.Api.adminLog();
+        DB.adminLog = Array.isArray(adminLog) ? adminLog : [];
+      } else {
+        DB.reports = [];
+        DB.adminLog = [];
+        DB._adminStats = null;
+      }
+    } catch (e) {
+      console.warn('Admin/reports load failed:', e);
+    }
+  },
+
   async init() {
     if (window.Lang?.syncChrome) window.Lang.syncChrome();
     // Set clock
@@ -46,20 +92,25 @@ const App = {
       console.warn('Config load failed:', e);
     }
 
-    // Restore session if token exists
     try {
       if (window.Api?.token?.get?.()) {
         const me = await window.Api.me();
         DB.currentUser = me;
-        App.navigate('home', {}, false);
-        return;
+      } else {
+        DB.currentUser = null;
       }
     } catch (e) {
       window.Api?.token?.set?.('');
       DB.currentUser = null;
     }
 
-    // Start app
+    await App.refreshRemoteData();
+
+    if (DB.currentUser) {
+      App.navigate('home', {}, false);
+      return;
+    }
+
     App.navigate('splash');
   },
 
@@ -155,6 +206,12 @@ const App = {
   logout() {
     window.Api?.token?.set?.('');
     DB.currentUser = null;
+    DB.claims = [];
+    DB.messages = {};
+    DB.notifications = [];
+    DB.reports = [];
+    DB.adminLog = [];
+    DB._adminStats = null;
     App.navigate('login', {}, false);
     App.history = [];
     document.getElementById('bottom-nav').style.display = 'none';
