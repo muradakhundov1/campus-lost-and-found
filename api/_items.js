@@ -31,6 +31,8 @@ module.exports = async function handler(req, res) {
 
   if (req.method !== 'POST') return json(res, 405, { error: 'method_not_allowed' });
 
+  console.log('[api]', 'POST', '/items', '(create)');
+
   const t = authToken(req);
   if (!t) return json(res, 401, { error: 'unauthorized' });
 

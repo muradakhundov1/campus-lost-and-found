@@ -6,9 +6,13 @@ const { mapItem } = require('./_itemsMap');
 const { requireUserId } = require('./_auth');
 
 module.exports = async function handler(req, res) {
+  if (req.method === 'POST') console.log('[api]', 'POST', '/claims/:id/handover', 'claimId=', req.query?.id);
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.end();
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    return res.end();
+  }
   if (req.method !== 'POST') return json(res, 405, { error: 'method_not_allowed' });
 
   const claimId = req.query.id;

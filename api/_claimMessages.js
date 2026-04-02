@@ -5,9 +5,15 @@ const { mapMessageRow } = require('./_claimMap');
 const { requireUserId } = require('./_auth');
 
 module.exports = async function handler(req, res) {
+  if (req.method !== 'OPTIONS') {
+    console.log('[api]', req.method, '/claims/:id/messages', 'claimId=', req.query?.id);
+  }
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.end();
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    return res.end();
+  }
 
   const claimId = req.query.id;
   if (!claimId) return json(res, 400, { error: 'invalid_request' });

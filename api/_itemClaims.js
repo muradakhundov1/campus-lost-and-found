@@ -14,9 +14,15 @@ async function insertNotification({ userId, type, title, description, timeLabel,
 }
 
 module.exports = async function handler(req, res) {
+  if (req.method !== 'OPTIONS') {
+    console.log('[api]', req.method, '/items/:id/claims', 'itemId=', req.query?.id);
+  }
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (req.method === 'OPTIONS') return res.end();
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    return res.end();
+  }
 
   const itemId = req.query.id;
   if (!itemId) return json(res, 400, { error: 'invalid_request' });

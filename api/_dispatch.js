@@ -34,9 +34,19 @@ module.exports = async function dispatch(req, res) {
   const method = req.method || 'GET';
   const segments = parseSegments(req);
 
+  // Visible in Vercel → Project → Logs (filter: [api]). Dedicated routes under api/items/[id]/ bypass this file.
+  if (method !== 'OPTIONS') {
+    const path = segments.length ? `/${segments.join('/')}` : '(no match)';
+    console.log('[api]', method, path, req.url ? `url=${String(req.url).slice(0, 160)}` : '');
+  }
+
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
-  if (method === 'OPTIONS') return res.end();
+  if (method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Max-Age', '86400');
+    return res.end();
+  }
 
   const one = segments[0];
   const two = segments[1];
