@@ -500,7 +500,9 @@ Screens['create-post'] = (ctx) => {
     });
   }
 
+  let postSubmitBusy = false;
   s.querySelector('#post-submit-btn').addEventListener('click', async () => {
+    if (postSubmitBusy) return;
     const title = s.querySelector('#post-title').value;
     const cat = s.querySelector('#post-cat').value;
     const loc = s.querySelector('#post-loc').value;
@@ -527,6 +529,7 @@ Screens['create-post'] = (ctx) => {
       verificationQuestions
     };
 
+    postSubmitBusy = true;
     try {
       const { item } = await window.Api.itemsCreate(payload);
       DB.items.unshift(item);
@@ -535,6 +538,8 @@ Screens['create-post'] = (ctx) => {
     } catch (e) {
       if (e.status === 401) App.toast(Lang.t('signInShort'));
       else App.toast(Lang.t('toastApiGeneric'));
+    } finally {
+      postSubmitBusy = false;
     }
   });
   return s;
@@ -581,7 +586,9 @@ Screens['finder-response'] = (ctx) => {
       <button class="btn btn-primary btn-block btn-lg" id="submit-finder-btn">${Lang.t('submitResponse')}</button>
     </div>`;
 
+  let finderSubmitBusy = false;
   s.querySelector('#submit-finder-btn').addEventListener('click', async () => {
+    if (finderSubmitBusy) return;
     const msg = s.querySelector('#finder-msg').value;
     if (!msg.trim()) { App.toast(Lang.t('writeMessageOwner')); return; }
     const u = DB.currentUser;
@@ -592,6 +599,7 @@ Screens['finder-response'] = (ctx) => {
       { questionId: 'desc', question: 'Item description', answer: s.querySelector('#finder-desc').value || '(not provided)' },
       ...(meeting ? [{ questionId: 'meeting', question: 'Suggested meeting point', answer: meeting }] : [])
     ];
+    finderSubmitBusy = true;
     try {
       const out = await window.Api.itemClaimsPost(item.id, { answers, isFinderResponse: true });
       if (out?.claim && !DB.claims.some((c) => c.id === out.claim.id)) DB.claims.unshift(out.claim);
@@ -600,11 +608,13 @@ Screens['finder-response'] = (ctx) => {
         if (ix >= 0) DB.items[ix] = out.item;
         else DB.items.unshift(out.item);
       }
-      await App.refreshRemoteData();
+      await App.refreshRemoteData({ listsOnly: true });
       App.toast(Lang.t('responseOk'));
       setTimeout(() => App.navigate('item-detail', { itemId: item.id }), 800);
     } catch (e) {
       App.toastClaimApiError(e);
+    } finally {
+      finderSubmitBusy = false;
     }
   });
   return s;

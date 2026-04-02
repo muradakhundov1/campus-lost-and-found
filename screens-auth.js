@@ -127,30 +127,37 @@ Screens.login = () => {
     toggle.setAttribute('aria-label', isPw ? Lang.t('hidePassword') : Lang.t('showPassword'));
   });
 
+  let loginBusy = false;
   s.querySelector('#login-btn').addEventListener('click', async () => {
+    if (loginBusy) return;
     const identifier = s.querySelector('#login-email').value.trim();
     const password = s.querySelector('#login-pass').value;
     if (!identifier) { App.toast(Lang.t('toastEnterEmail')); return; }
     if (!password) { App.toast(Lang.t('toastEnterPassword')); return; }
-    let user;
+    loginBusy = true;
     try {
-      user = await window.Api.login(identifier, password);
-    } catch (e) {
-      if (e.message === 'invalid_json' || e.message === 'empty_response' || e.code === 'bad_auth_payload') {
-        App.toast(Lang.t('toastRegBadResponse'));
-      } else {
-        App.toast(Lang.t('toastSignInFailed'));
+      let user;
+      try {
+        user = await window.Api.login(identifier, password);
+      } catch (e) {
+        if (e.message === 'invalid_json' || e.message === 'empty_response' || e.code === 'bad_auth_payload') {
+          App.toast(Lang.t('toastRegBadResponse'));
+        } else {
+          App.toast(Lang.t('toastSignInFailed'));
+        }
+        return;
       }
-      return;
-    }
-    DB.currentUser = user;
-    try {
-      await App.refreshRemoteData();
-      App.navigate('home', {}, false);
-      App.history = [];
-    } catch (e) {
-      console.error(e);
-      App.toast(Lang.t('toastSignedInBlank'));
+      DB.currentUser = user;
+      try {
+        await App.refreshRemoteData();
+        App.navigate('home', {}, false);
+        App.history = [];
+      } catch (e) {
+        console.error(e);
+        App.toast(Lang.t('toastSignedInBlank'));
+      }
+    } finally {
+      loginBusy = false;
     }
   });
 
@@ -256,6 +263,7 @@ Screens.register = () => {
     rtoggle.setAttribute('aria-label', isPw ? Lang.t('hidePassword') : Lang.t('showPassword'));
   });
 
+  let regBusy = false;
   s.querySelector('#reg-btn').addEventListener('click', async () => {
     const name = s.querySelector('#reg-name').value.trim();
     const email = s.querySelector('#reg-email').value.trim();
@@ -270,6 +278,8 @@ Screens.register = () => {
     if (role === 'student' && !department) { App.toast(Lang.t('toastSelectFaculty')); return; }
     if (!password || password.length < 8) { App.toast(Lang.t('toastPasswordLen')); return; }
 
+    if (regBusy) return;
+    regBusy = true;
     try {
       const user = await window.Api.register({ name, email, phone: phoneVal, role, department, year: role === 'staff' ? 'Staff' : '', password });
       DB.currentUser = user;
@@ -289,6 +299,8 @@ Screens.register = () => {
       } else {
         App.toast(Lang.t('toastRegDb'));
       }
+    } finally {
+      regBusy = false;
     }
   });
   s.querySelector('#lang-en').addEventListener('click', () => Lang.set('en'));

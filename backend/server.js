@@ -483,8 +483,9 @@ app.post('/api/claims/:id/handover', requireAuth, (req, res) => {
   if (!isParticipant) return res.status(403).json({ error: 'forbidden' });
 
   if (body.data.action === 'schedule') {
-    const mp = body.data.meetingPoint || 'Main Building Lobby';
-    const mt = body.data.meetingTime || 'Mar 22, 2026 at 2:00 PM';
+    const mp = (body.data.meetingPoint || '').trim();
+    const mt = (body.data.meetingTime || '').trim();
+    if (!mp || !mt) return res.status(400).json({ error: 'meeting_required' });
     db.prepare('UPDATE claims SET handover_status = ?, meeting_point = ?, meeting_time = ? WHERE id = ?').run(
       'Scheduled',
       mp,

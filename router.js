@@ -6,71 +6,181 @@ const App = {
   history: [],
   currentScreen: null,
   screenContext: {},
+  /** True after /api/config has been applied once (categories/locations rarely change). */
+  _configLoaded: false,
+  /** Coalesce concurrent full refreshes so double navigation does not duplicate work. */
+  _refreshDefaultInFlight: null,
 
-  async refreshRemoteData() {
+  /**
+   * @param {object} [opts]
+   * @param {boolean} [opts.notificationsOnly] — only refetch notifications (e.g. mark all read)
+   * @param {boolean} [opts.listsOnly] — items + claims + notifications, no config or admin block
+   * @param {boolean} [opts.forceConfig] — include /api/config even if already loaded
+   */
+  async refreshRemoteData(opts = {}) {
     const tok = window.Api.token.get();
-    // GET /api/config — no Bearer token (public). Load only when we have a session so anonymous
-    // splash/login/register do not hit /api/config (avoids confusing Vercel logs with auth).
-    if (tok) {
-      try {
-        const cfg = await window.Api.config();
-        if (cfg) {
-          DB.categories = cfg.categories || DB.categories;
-          DB.locations = cfg.locations || DB.locations;
-          DB.predefinedQuestions = cfg.predefinedQuestions || DB.predefinedQuestions;
-        }
-      } catch (e) {
-        console.warn('Config load failed:', e);
-      }
-    }
-    try {
-      if (tok) {
-        const { items } = await window.Api.itemsList();
-        if (Array.isArray(items)) DB.items = items;
-      }
-    } catch (e) {
-      console.warn('Items load failed:', e);
-    }
     if (!tok) {
+      App._configLoaded = false;
       DB.claims = [];
       DB.messages = {};
       DB.notifications = [];
       DB.reports = [];
       DB.adminLog = [];
       DB._adminStats = null;
+      App.updateNavBadges();
       return;
     }
-    try {
-      const { claims } = await window.Api.claimsList();
-      if (Array.isArray(claims)) DB.claims = claims;
-    } catch (e) {
-      console.warn('Claims load failed:', e);
+
+    const isDefault =
+      !opts.notificationsOnly && !opts.listsOnly && !opts.forceConfig && Object.keys(opts).length === 0;
+    if (isDefault && App._refreshDefaultInFlight) {
+      return App._refreshDefaultInFlight;
     }
-    try {
-      const { notifications } = await window.Api.notificationsList();
-      if (Array.isArray(notifications)) DB.notifications = notifications;
-    } catch (e) {
-      console.warn('Notifications load failed:', e);
-    }
-    try {
-      if (DB.currentUser?.role === 'admin') {
-        const { reports } = await window.Api.reportsList();
-        DB.reports = Array.isArray(reports) ? reports : [];
-        const stats = await window.Api.adminStats();
-        DB._adminStats = stats;
-        const { adminLog } = await window.Api.adminLog();
-        DB.adminLog = Array.isArray(adminLog) ? adminLog : [];
-      } else {
-        DB.reports = [];
-        DB.adminLog = [];
-        DB._adminStats = null;
+
+    const run = (async () => {
+      if (opts.notificationsOnly) {
+        try {
+          const notifRes = await window.Api.notificationsList();
+          if (Array.isArray(notifRes.notifications)) DB.notifications = notifRes.notifications;
+        } catch (e) {
+          console.warn('Notifications refresh failed:', e);
+        }
+        App.updateNavBadges();
+        return;
       }
-    } catch (e) {
-      console.warn('Admin/reports load failed:', e);
+
+      if (opts.listsOnly) {
+        try {
+          const [itemsRes, claimsRes, notifRes] = await Promise.all([
+            window.Api.itemsList().catch((e) => {
+              console.warn('Items load failed:', e);
+              return {};
+            }),
+            window.Api.claimsList().catch((e) => {
+              console.warn('Claims load failed:', e);
+              return {};
+            }),
+            window.Api.notificationsList().catch((e) => {
+              console.warn('Notifications load failed:', e);
+              return {};
+            })
+          ]);
+          if (Array.isArray(itemsRes.items)) DB.items = itemsRes.items;
+          if (Array.isArray(claimsRes.claims)) DB.claims = claimsRes.claims;
+          if (Array.isArray(notifRes.notifications)) DB.notifications = notifRes.notifications;
+        } catch (e) {
+          console.warn('Lists refresh failed:', e);
+        }
+        App.updateNavBadges();
+        return;
+      }
+
+      const wantConfig = opts.forceConfig || !App._configLoaded;
+      try {
+        const fetches = [
+          wantConfig
+            ? window.Api.config().catch((e) => {
+                console.warn('Config load failed:', e);
+                return null;
+              })
+            : Promise.resolve(null),
+          window.Api.itemsList().catch((e) => {
+            console.warn('Items load failed:', e);
+            return {};
+          }),
+          window.Api.claimsList().catch((e) => {
+            console.warn('Claims load failed:', e);
+            return {};
+          }),
+          window.Api.notificationsList().catch((e) => {
+            console.warn('Notifications load failed:', e);
+            return {};
+          })
+        ];
+        const [cfg, itemsRes, claimsRes, notifRes] = await Promise.all(fetches);
+        if (cfg) {
+          DB.categories = cfg.categories || DB.categories;
+          DB.locations = cfg.locations || DB.locations;
+          DB.predefinedQuestions = cfg.predefinedQuestions || DB.predefinedQuestions;
+          App._configLoaded = true;
+        }
+        if (Array.isArray(itemsRes.items)) DB.items = itemsRes.items;
+        if (Array.isArray(claimsRes.claims)) DB.claims = claimsRes.claims;
+        if (Array.isArray(notifRes.notifications)) DB.notifications = notifRes.notifications;
+      } catch (e) {
+        console.warn('Parallel refresh failed:', e);
+      }
+      try {
+        if (DB.currentUser?.role === 'admin') {
+          const [reportsRes, stats, logRes] = await Promise.all([
+            window.Api.reportsList().catch((e) => {
+              console.warn('Reports load failed:', e);
+              return {};
+            }),
+            window.Api.adminStats().catch((e) => {
+              console.warn('Admin stats failed:', e);
+              return null;
+            }),
+            window.Api.adminLog().catch((e) => {
+              console.warn('Admin log failed:', e);
+              return {};
+            })
+          ]);
+          const { reports } = reportsRes;
+          DB.reports = Array.isArray(reports) ? reports : [];
+          DB._adminStats = stats;
+          const { adminLog } = logRes;
+          DB.adminLog = Array.isArray(adminLog) ? adminLog : [];
+        } else {
+          DB.reports = [];
+          DB.adminLog = [];
+          DB._adminStats = null;
+        }
+      } catch (e) {
+        console.warn('Admin/reports load failed:', e);
+      }
+      App.updateNavBadges();
+    })();
+
+    if (isDefault) {
+      App._refreshDefaultInFlight = run;
+      run.finally(() => {
+        if (App._refreshDefaultInFlight === run) App._refreshDefaultInFlight = null;
+      });
+    }
+
+    return run;
+  },
+
+  /** Messages tab badge = approved chats you can open (same filter as Screens.messages). Not the same as unread notifications (home bell). */
+  updateNavBadges() {
+    const badge = document.getElementById('msg-badge');
+    if (!badge) return;
+    const u = DB.currentUser;
+    if (!u?.id) {
+      badge.style.display = 'none';
+      badge.textContent = '';
+      return;
+    }
+    const threads = DB.claims.filter(
+      (c) =>
+        c.chatEnabled &&
+        (c.claimantId === u.id || DB.getItemById(c.itemId)?.posterId === u.id)
+    );
+    const n = threads.length;
+    if (n === 0) {
+      badge.style.display = 'none';
+      badge.textContent = '';
+    } else {
+      badge.style.display = 'flex';
+      badge.textContent = n > 9 ? '9+' : String(n);
     }
   },
 
   async init() {
+    if (App._initStarted) return;
+    App._initStarted = true;
+
     if (window.Lang?.syncChrome) window.Lang.syncChrome();
     // Set clock
     const updateTime = () => {
@@ -83,19 +193,19 @@ const App = {
     };
     updateTime(); setInterval(updateTime, 30000);
 
-    // Nav button listeners
-    document.querySelectorAll('.nav-btn[data-screen]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const s = btn.dataset.screen;
-        if (s === 'post') { App.navigate('post-type'); return; }
-        App.navigate(s, {}, false);
-        document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
+    if (!App._navUiBound) {
+      App._navUiBound = true;
+      document.querySelectorAll('.nav-btn[data-screen]').forEach((btn) => {
+        btn.addEventListener('click', () => {
+          const s = btn.dataset.screen;
+          if (s === 'post') { App.navigate('post-type'); return; }
+          App.navigate(s, {}, false);
+          document.querySelectorAll('.nav-btn').forEach((b) => b.classList.remove('active'));
+          btn.classList.add('active');
+        });
       });
-    });
-
-    // Modal overlay close
-    document.getElementById('modal-overlay').addEventListener('click', App.closeModal);
+      document.getElementById('modal-overlay').addEventListener('click', App.closeModal);
+    }
 
     try {
       if (window.Api?.token?.get?.()) {
@@ -161,10 +271,7 @@ const App = {
       }
     }
 
-    // Badge
-    const unread = DB.notifications.filter(n => !n.read).length;
-    const badge = document.getElementById('msg-badge');
-    if (badge) { badge.style.display = unread > 0 ? 'flex' : 'none'; badge.textContent = unread; }
+    App.updateNavBadges();
   },
 
   back() {
@@ -182,6 +289,7 @@ const App = {
     App.currentScreen = prev;
     const authScreens = ['splash', 'onboarding', 'login', 'register', 'otp'];
     document.getElementById('bottom-nav').style.display = authScreens.includes(prev) ? 'none' : 'flex';
+    App.updateNavBadges();
   },
 
   showModal(html) {

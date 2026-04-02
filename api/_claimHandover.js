@@ -37,6 +37,14 @@ module.exports = async function handler(req, res) {
     .safeParse(body);
   if (!parsed.success) return json(res, 400, { error: 'invalid_request' });
 
+  let scheduleMp = '';
+  let scheduleMt = '';
+  if (parsed.data.action === 'schedule') {
+    scheduleMp = typeof parsed.data.meetingPoint === 'string' ? parsed.data.meetingPoint.trim() : '';
+    scheduleMt = typeof parsed.data.meetingTime === 'string' ? parsed.data.meetingTime.trim() : '';
+    if (!scheduleMp || !scheduleMt) return json(res, 400, { error: 'meeting_required' });
+  }
+
   try {
     const cr = await query('select * from claims where id = $1', [claimId]);
     const claim = cr.rows[0];
@@ -52,11 +60,9 @@ module.exports = async function handler(req, res) {
     if (!isParticipant) return json(res, 403, { error: 'forbidden' });
 
     if (parsed.data.action === 'schedule') {
-      const mp = parsed.data.meetingPoint || 'Main Building Lobby';
-      const mt = parsed.data.meetingTime || 'Mar 22, 2026 at 2:00 PM';
       await query(
         'update claims set handover_status = $1, meeting_point = $2, meeting_time = $3 where id = $4',
-        ['Scheduled', mp, mt, claimId]
+        ['Scheduled', scheduleMp, scheduleMt, claimId]
       );
     } else {
       await query(

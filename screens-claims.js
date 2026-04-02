@@ -45,7 +45,9 @@ Screens['claim-submit'] = (ctx) => {
     ta.addEventListener('input', () => { answers[+ta.dataset.idx] = ta.value; });
   });
 
+  let claimSubmitBusy = false;
   s.querySelector('#submit-claim-btn').addEventListener('click', async () => {
+    if (claimSubmitBusy) return;
     const u = DB.currentUser;
     if (!u?.id) { App.toast(Lang.t('signInShort')); return; }
     const answersPayload = questions.map((q, i) => ({
@@ -55,13 +57,16 @@ Screens['claim-submit'] = (ctx) => {
     }));
     const notes = s.querySelector('#claim-notes').value.trim();
     if (notes) answersPayload.push({ questionId: 'notes', question: 'Additional notes', answer: notes });
+    claimSubmitBusy = true;
     try {
       await window.Api.itemClaimsPost(item.id, { answers: answersPayload, isFinderResponse: false });
-      await App.refreshRemoteData();
+      await App.refreshRemoteData({ listsOnly: true });
       App.toast(Lang.t('claimOk'));
       setTimeout(() => App.navigate('item-detail', { itemId: item.id }), 800);
     } catch (e) {
       App.toastClaimApiError(e);
+    } finally {
+      claimSubmitBusy = false;
     }
   });
   return s;
@@ -115,7 +120,7 @@ Screens['claim-review'] = (ctx) => {
   window.approveClaim = async (claimId) => {
     try {
       await window.Api.claimApprove(claimId);
-      await App.refreshRemoteData();
+      await App.refreshRemoteData({ listsOnly: true });
       renderClaims();
       App.toast(isLostItem ? Lang.t('responseAcceptedChat') : Lang.t('claimApprovedChat'));
     } catch (e) {
@@ -125,7 +130,7 @@ Screens['claim-review'] = (ctx) => {
   window.rejectClaim = async (claimId) => {
     try {
       await window.Api.claimReject(claimId, Lang.t('rejectMatchNote'));
-      await App.refreshRemoteData();
+      await App.refreshRemoteData({ listsOnly: true });
       renderClaims();
       App.toast(Lang.t('claimRejected'));
     } catch (e) {
@@ -207,8 +212,11 @@ Screens.chat = (ctx) => {
     }
   })();
 
+  let chatSending = false;
   const sendMsg = async (text) => {
     if (!text.trim()) return;
+    if (chatSending) return;
+    chatSending = true;
     try {
       const { message } = await window.Api.claimMessagesPost(claim.id, text.trim());
       if (!DB.messages[claim.id]) DB.messages[claim.id] = [];
@@ -218,12 +226,18 @@ Screens.chat = (ctx) => {
       input.value = '';
     } catch (e) {
       App.toast(Lang.t('toastApiGeneric'));
+    } finally {
+      chatSending = false;
     }
   };
 
   window.sendQuick = (t) => sendMsg(t);
   s.querySelector('#chat-send').addEventListener('click', () => sendMsg(input.value));
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') sendMsg(input.value); });
+  input.addEventListener('keydown', (e) => {
+    if (e.key !== 'Enter') return;
+    e.preventDefault();
+    sendMsg(input.value);
+  });
   return s;
 };
 
@@ -276,7 +290,7 @@ Screens.handover = (ctx) => {
       ${stepDone < 5 ? `
         <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
           ${stepDone < 2 ? `<button class="btn btn-outline btn-block" onclick="App.navigate('chat',{claimId:'${claim?.id}'})">${Lang.t('openChat')}</button>` : ''}
-          ${stepDone < 3 ? `<button class="btn btn-primary btn-block" onclick="window.updateHandover()">${Lang.t('scheduleHandover')}</button>` : ''}
+          ${stepDone < 3 ? `<button class="btn btn-primary btn-block" onclick="window.openHandoverScheduleModal()">${Lang.t('scheduleHandover')}</button>` : ''}
           ${stepDone === 3 ? `<button class="btn btn-success btn-block" onclick="window.confirmHandover()">${Lang.t('confirmReceived')}</button>` : ''}
         </div>` : `
         <div class="info-banner success" style="margin:0">
@@ -285,22 +299,72 @@ Screens.handover = (ctx) => {
         </div>`}
     </div>`;
 
-  window.updateHandover = async () => {
-    if (!claim) return;
+  const formatHandoverMeetingTime = (dtLocal) => {
+    if (!dtLocal) return '';
+    const d = new Date(dtLocal);
+    if (Number.isNaN(d.getTime())) return dtLocal;
     try {
-      await window.Api.claimHandover(claim.id, { action: 'schedule' });
-      await App.refreshRemoteData();
-      App.toast(Lang.t('handoverScheduled'));
-      App.navigate('handover', { claimId: ctx.claimId });
-    } catch (e) {
-      App.toast(Lang.t('toastApiGeneric'));
+      return d.toLocaleString(Lang.current === 'az' ? 'az-AZ' : 'en-US', { dateStyle: 'medium', timeStyle: 'short' });
+    } catch {
+      return dtLocal;
     }
+  };
+
+  window.openHandoverScheduleModal = () => {
+    if (!claim) return;
+    const esc = (s) => String(s).replace(/&/g, '&amp;').replace(/"/g, '&quot;');
+    const locOpts = (DB.locations || []).map((l) => `<option value="${esc(l)}">${Lang.formatLocation(l)}</option>`).join('');
+    App.showModal(`
+      <div style="padding:12px 16px 20px">
+        <div style="font-size:17px;font-weight:700;margin-bottom:4px">${Lang.t('handoverScheduleModalTitle')}</div>
+        <div style="font-size:12px;color:var(--text-secondary);margin-bottom:16px;line-height:1.45">${Lang.t('handoverScheduleModalHint')}</div>
+        <div class="form-group">
+          <label class="form-label">${Lang.t('meetingPointLabel')}</label>
+          <select class="form-select" id="handover-modal-meeting">
+            <option value="">${Lang.t('selectLocation')}</option>
+            ${locOpts}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">${Lang.t('handoverMeetingTimeLabel')}</label>
+          <input type="datetime-local" class="form-input" id="handover-modal-time" />
+        </div>
+        <button type="button" class="btn btn-primary btn-block" id="handover-modal-submit">${Lang.t('handoverConfirmSchedule')}</button>
+        <button type="button" class="btn btn-outline btn-block" style="margin-top:8px" onclick="App.closeModal()">${Lang.t('handoverModalCancel')}</button>
+      </div>`);
+    setTimeout(() => {
+      const timeEl = document.getElementById('handover-modal-time');
+      if (timeEl) {
+        const min = new Date();
+        min.setMinutes(min.getMinutes() - min.getTimezoneOffset());
+        timeEl.min = min.toISOString().slice(0, 16);
+      }
+      document.getElementById('handover-modal-submit')?.addEventListener('click', async () => {
+        const mp = document.getElementById('handover-modal-meeting')?.value?.trim();
+        const raw = document.getElementById('handover-modal-time')?.value;
+        if (!mp || !raw) {
+          App.toast(Lang.t('toastHandoverMeetingRequired'));
+          return;
+        }
+        const mt = formatHandoverMeetingTime(raw);
+        try {
+          await window.Api.claimHandover(claim.id, { action: 'schedule', meetingPoint: mp, meetingTime: mt });
+          App.closeModal();
+          await App.refreshRemoteData({ listsOnly: true });
+          App.toast(Lang.t('handoverScheduled'));
+          App.navigate('handover', { claimId: ctx.claimId });
+        } catch (e) {
+          if (e?.data?.error === 'meeting_required') App.toast(Lang.t('toastHandoverMeetingRequired'));
+          else App.toast(Lang.t('toastApiGeneric'));
+        }
+      });
+    }, 0);
   };
   window.confirmHandover = async () => {
     if (!claim) return;
     try {
       await window.Api.claimHandover(claim.id, { action: 'complete' });
-      await App.refreshRemoteData();
+      await App.refreshRemoteData({ listsOnly: true });
       App.toast(Lang.t('handoverConfirmed'));
       App.navigate('handover', { claimId: ctx.claimId });
     } catch (e) {
@@ -336,7 +400,6 @@ Screens.messages = () => {
           </div>
           <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px">
             <div class="message-thread-time">${lastMsg?.time || ''}</div>
-            <div class="message-thread-badge">2</div>
           </div>
         </div>`;}).join('')}
     </div>`;
@@ -363,7 +426,7 @@ Screens.notifications = () => {
   s.querySelector('#notif-mark-all')?.addEventListener('click', async () => {
     try {
       await window.Api.notificationsMarkAllRead();
-      await App.refreshRemoteData();
+      await App.refreshRemoteData({ notificationsOnly: true });
       App.navigate('notifications');
     } catch (e) {
       App.toast(Lang.t('toastApiGeneric'));
@@ -566,9 +629,12 @@ Screens.report = (ctx) => {
     });
   });
 
+  let reportSubmitBusy = false;
   s.querySelector('#submit-report-btn').addEventListener('click', async () => {
     if (!selectedReasonKey) return;
     if (!DB.currentUser?.id) { App.toast(Lang.t('signInShort')); return; }
+    if (reportSubmitBusy) return;
+    reportSubmitBusy = true;
     try {
       await window.Api.reportsCreate({
         type: ctx.targetType,
@@ -578,11 +644,13 @@ Screens.report = (ctx) => {
         detail: s.querySelector('#report-detail').value,
         severity: 'medium'
       });
-      await App.refreshRemoteData();
+      await App.refreshRemoteData({ listsOnly: true });
       App.toast(Lang.t('reportOk'));
       setTimeout(() => App.back(), 800);
     } catch (e) {
       App.toast(Lang.t('toastApiGeneric'));
+    } finally {
+      reportSubmitBusy = false;
     }
   });
   return s;
@@ -700,5 +768,3 @@ Screens['admin-mod'] = (ctx) => {
   return s;
 };
 
-// Init
-window.addEventListener('DOMContentLoaded', () => App.init());
