@@ -254,7 +254,11 @@ Screens.register = () => {
       setTimeout(() => App.navigate('home', {}, false), 500);
       App.history = [];
     } catch (e) {
-      App.toast('Registration failed. Email/phone may already exist.');
+      if (e.status === 409 || e.data?.error === 'user_exists') {
+        App.toast('Registration failed. Email/phone may already exist.');
+      } else {
+        App.toast('Registration failed. Check that the database is set up, then try again.');
+      }
     }
   });
   s.querySelector('#lang-en').addEventListener('click', () => Lang.set('en'));

@@ -41,7 +41,12 @@ module.exports = async function handler(req, res) {
       [id, p.name, p.email, p.phone || null, password_hash, p.role, avatar, p.department || '', p.year || '']
     );
   } catch (e) {
-    return json(res, 409, { error: 'user_exists' });
+    // Any DB error was previously returned as "user_exists"; only unique violations mean duplicate.
+    if (e && e.code === '23505') {
+      return json(res, 409, { error: 'user_exists' });
+    }
+    console.error('[register] insert user failed', e);
+    return json(res, 500, { error: 'server_error' });
   }
 
   const t = token();
