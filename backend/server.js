@@ -104,6 +104,70 @@ function mapReportRow(row) {
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
+// ===== Upload (Supabase Storage via service role key) =====
+app.post('/api/upload', requireAuth, async (req, res) => {
+  const storageUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
+  const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || process.env.SUPABASE_STORAGE_BUCKET || 'item-photos';
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_KEY || '';
+  if (!storageUrl || !bucket || !serviceRoleKey) {
+    return res.status(500).json({
+      error: 'storage_not_configured',
+      missing: {
+        SUPABASE_URL: !storageUrl,
+        SUPABASE_STORAGE_BUCKET: !bucket,
+        SUPABASE_SERVICE_ROLE_KEY: !serviceRoleKey
+      }
+    });
+  }
+
+  const ct = String(req.headers['content-type'] || '').toLowerCase();
+  if (!ct.startsWith('image/')) return res.status(400).json({ error: 'invalid_file_type' });
+
+  const maxBytes = 6 * 1024 * 1024;
+  const chunks = [];
+  let n = 0;
+  req.on('data', (c) => {
+    n += c.length;
+    if (n > maxBytes) {
+      try { req.destroy(); } catch {}
+    } else {
+      chunks.push(c);
+    }
+  });
+  req.on('end', async () => {
+    if (n > maxBytes) return res.status(413).json({ error: 'payload_too_large' });
+    const buf = Buffer.concat(chunks);
+    if (!buf.length) return res.status(400).json({ error: 'empty_file' });
+    const rawName = String(req.headers['x-filename'] || '').trim();
+    const rawExt = (rawName.split('.').pop() || '').toLowerCase();
+    const safeExt = /^[a-z0-9]{1,8}$/.test(rawExt) ? rawExt : (ct.split('/')[1] || 'jpg');
+    const filePath = `items/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${safeExt}`;
+    const encPath = filePath.split('/').filter(Boolean).map(encodeURIComponent).join('/');
+    const objPath = `${encodeURIComponent(bucket)}/${encPath}`;
+
+    try {
+      const upRes = await fetch(`${storageUrl}/storage/v1/object/${objPath}`, {
+        method: 'POST',
+        headers: {
+          apikey: serviceRoleKey,
+          Authorization: `Bearer ${serviceRoleKey}`,
+          'Content-Type': ct,
+          'x-upsert': 'false'
+        },
+        body: buf
+      });
+      if (!upRes.ok) return res.status(502).json({ error: 'upload_failed' });
+      return res.json({
+        path: filePath,
+        publicUrl: `${storageUrl}/storage/v1/object/public/${encodeURIComponent(bucket)}/${encPath}`
+      });
+    } catch (e) {
+      console.error('[upload]', e);
+      return res.status(502).json({ error: 'upload_failed' });
+    }
+  });
+});
+
 // ===== Auth =====
 app.post('/api/auth/login', (req, res) => {
   const body = z

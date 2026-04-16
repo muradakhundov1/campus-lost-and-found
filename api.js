@@ -209,41 +209,33 @@ const Api = {
       err.code = 'invalid_file_type';
       throw err;
     }
-    const storage = typeof DB !== 'undefined' ? DB.storage : window.DB?.storage;
-    if (!storage?.url || !storage?.anonKey || !storage?.bucket) {
-      const err = new Error('storage_not_configured');
-      err.code = 'storage_not_configured';
+    const t = getToken();
+    if (!t) {
+      const err = new Error('unauthorized');
+      err.code = 'unauthorized';
       throw err;
     }
-    const rawExt = (file.name.split('.').pop() || '').toLowerCase();
-    const safeExt = /^[a-z0-9]{1,8}$/.test(rawExt) ? rawExt : 'jpg';
-    const filePath = `items/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${safeExt}`;
-    const bucketPath = `${encodeURIComponent(storage.bucket)}/${encodeStoragePath(filePath)}`;
-    const res = await fetch(`${storage.url}/storage/v1/object/${bucketPath}`, {
+    const res = await fetch(`${API_BASE}/api/upload`, {
       method: 'POST',
       headers: {
-        apikey: storage.anonKey,
-        Authorization: `Bearer ${storage.anonKey}`,
-        'x-upsert': 'false',
-        'Content-Type': file.type || 'application/octet-stream'
+        Authorization: `Bearer ${t}`,
+        'Content-Type': file.type || 'application/octet-stream',
+        'X-Filename': file.name || 'photo'
       },
       body: file
     });
+    let data = null;
+    try {
+      data = await res.json();
+    } catch {}
     if (!res.ok) {
-      let data = null;
-      try {
-        data = await res.json();
-      } catch {}
-      const err = new Error(data?.message || data?.error || 'upload_failed');
-      err.code = 'upload_failed';
+      const err = new Error(data?.error || 'upload_failed');
+      err.code = data?.error || 'upload_failed';
       err.status = res.status;
       err.data = data;
       throw err;
     }
-    return {
-      path: filePath,
-      publicUrl: `${storage.url}/storage/v1/object/public/${encodeURIComponent(storage.bucket)}/${encodeStoragePath(filePath)}`
-    };
+    return data;
   },
 
   async itemsList() {

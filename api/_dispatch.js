@@ -62,6 +62,9 @@ module.exports = async function dispatch(req, res) {
     if (segments.length === 1 && one === 'me' && method === 'GET') {
       return require('./_me')(req, res);
     }
+    if (segments.length === 1 && one === 'upload' && method === 'POST') {
+      return require('./_upload')(req, res);
+    }
 
     if (segments.length === 2 && one === 'auth' && two === 'login' && method === 'POST') {
       return require('./_authLogin')(req, res);
