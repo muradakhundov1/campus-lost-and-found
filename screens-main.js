@@ -472,6 +472,10 @@ Screens['create-post'] = (ctx) => {
         </div>
         <div id="post-photo-preview-wrap" class="photo-preview-wrap" style="display:none">
           <img id="post-photo-preview" class="photo-preview-image" alt="${Lang.t('photoPreviewAlt')}" />
+          <div class="photo-preview-actions">
+            <button type="button" class="btn btn-outline btn-sm" id="post-photo-change-btn">${Lang.t('changePhoto')}</button>
+            <button type="button" class="btn btn-outline btn-sm" style="color:var(--danger);border-color:rgba(239,68,68,0.35)" id="post-photo-remove-btn">${Lang.t('removePhoto')}</button>
+          </div>
         </div>
         <div class="form-hint" id="post-photo-status"></div>
       </div>
@@ -513,7 +517,20 @@ Screens['create-post'] = (ctx) => {
   const photoStatus = s.querySelector('#post-photo-status');
   const photoPreviewWrap = s.querySelector('#post-photo-preview-wrap');
   const photoPreview = s.querySelector('#post-photo-preview');
+  const photoChangeBtn = s.querySelector('#post-photo-change-btn');
+  const photoRemoveBtn = s.querySelector('#post-photo-remove-btn');
+  const clearPhoto = () => {
+    photoUrl = '';
+    if (photoPreviewObjectUrl) URL.revokeObjectURL(photoPreviewObjectUrl);
+    photoPreviewObjectUrl = '';
+    if (photoInput) photoInput.value = '';
+    photoPreviewWrap.style.display = 'none';
+    photoTrigger.style.display = 'flex';
+    photoStatus.textContent = '';
+  };
   photoTrigger?.addEventListener('click', () => photoInput?.click());
+  photoChangeBtn?.addEventListener('click', () => photoInput?.click());
+  photoRemoveBtn?.addEventListener('click', () => clearPhoto());
   photoInput?.addEventListener('change', async () => {
     const file = photoInput.files?.[0];
     if (!file) return;
@@ -525,6 +542,7 @@ Screens['create-post'] = (ctx) => {
     photoPreviewObjectUrl = URL.createObjectURL(file);
     photoPreview.src = photoPreviewObjectUrl;
     photoPreviewWrap.style.display = 'block';
+    photoTrigger.style.display = 'none';
     photoStatus.textContent = Lang.t('photoUploading');
     photoUploading = true;
     photoUrl = '';
@@ -533,7 +551,7 @@ Screens['create-post'] = (ctx) => {
       photoUrl = uploaded.publicUrl;
       photoStatus.textContent = Lang.t('photoReady');
     } catch (e) {
-      photoPreviewWrap.style.display = 'none';
+      clearPhoto();
       photoStatus.textContent =
         e?.code === 'storage_not_configured' ? Lang.t('photoUploadConfigMissing') : Lang.t('photoUploadFailed');
       App.toast(photoStatus.textContent);
