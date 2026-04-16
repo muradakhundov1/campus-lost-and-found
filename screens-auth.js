@@ -225,10 +225,6 @@ Screens.register = () => {
           <button class="pw-toggle" type="button" id="reg-pass-toggle" aria-label="${Lang.t('showPassword')}">${Lang.t('show')}</button>
         </div>
       </div>
-      <div class="info-banner" style="margin:0 0 20px">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--info)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-        <div style="font-size:12px;color:var(--info);line-height:1.5">${Lang.t('regVerifyBanner')}</div>
-      </div>
       <button type="button" class="btn btn-primary btn-block btn-lg" id="reg-btn">${Lang.t('registerCta')}</button>
       <div class="auth-footer">${Lang.t('alreadyHaveAccount')} <span class="auth-link" onclick="App.navigate('login')">${Lang.t('signIn')}</span></div>
     </div>`;
