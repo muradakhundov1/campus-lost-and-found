@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS items (
   title TEXT NOT NULL,
   category TEXT NOT NULL,
   description TEXT NOT NULL,
+  photo_url TEXT,
   location TEXT NOT NULL,
   date TEXT NOT NULL,
   time TEXT,

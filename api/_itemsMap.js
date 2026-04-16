@@ -17,6 +17,7 @@ function mapItem(row) {
     title: row.title,
     category: row.category,
     description: row.description,
+    photoUrl: row.photo_url,
     location: row.location,
     date: row.date,
     time: row.time || '',

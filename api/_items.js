@@ -19,7 +19,7 @@ module.exports = async function handler(req, res) {
   if (req.method === 'GET') {
     try {
       const r = await query(
-        `select id, type, title, category, description, location, date, time, status, poster_id, poster_name, claim_count, resolved_at, verification_questions, created_at
+        `select id, type, title, category, description, photo_url, location, date, time, status, poster_id, poster_name, claim_count, resolved_at, verification_questions, created_at
          from items order by created_at desc`
       );
       return json(res, 200, { items: r.rows.map(mapItem) });
@@ -53,6 +53,7 @@ module.exports = async function handler(req, res) {
       title: z.string().min(1),
       category: z.string().min(1),
       description: z.string().min(1),
+      photoUrl: z.string().url().optional(),
       location: z.string().min(1),
       date: z.string().min(1),
       time: z.string().optional(),
@@ -77,14 +78,15 @@ module.exports = async function handler(req, res) {
 
   try {
     await query(
-      `insert into items (id, type, title, category, description, location, date, time, status, poster_id, poster_name, claim_count, resolved_at, verification_questions, created_at, updated_at)
-       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,0,null,$12::jsonb,now(),now())`,
+      `insert into items (id, type, title, category, description, photo_url, location, date, time, status, poster_id, poster_name, claim_count, resolved_at, verification_questions, created_at, updated_at)
+       values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,0,null,$13::jsonb,now(),now())`,
       [
         itemId,
         p.type,
         p.title,
         p.category,
         p.description,
+        p.photoUrl || null,
         p.location,
         p.date,
         p.time || '',

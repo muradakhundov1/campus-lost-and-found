@@ -14,6 +14,7 @@ const DB = {
   notifications: [],
   reports: [],
   adminLog: [],
+  storage: null,
 
   categories: ['Documents / ID Cards', 'Electronics', 'Keys', 'Wallet / Money', 'Earphones / Accessories', 'Bags', 'Clothing', 'Other'],
   locations: ['Main Building', 'Library', 'Cafeteria', 'Lab', 'Classroom Building', 'Dormitory', 'Parking Area', 'Security Desk', 'Other'],

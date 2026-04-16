@@ -285,7 +285,7 @@ Screens['item-detail'] = (ctx) => {
   s.innerHTML = `
     ${backHeader(item.type === 'lost' ? Lang.t('lostItem') : Lang.t('foundItem'), headerRight)}
     <div class="scroll-area" style="padding-bottom:24px">
-      <div class="item-detail-img">${categoryIcon(item.category)}</div>
+      <div class="item-detail-img">${item.photoUrl ? `<img src="${item.photoUrl}" alt="${item.title}" />` : categoryIcon(item.category)}</div>
       <div class="item-detail-body">
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
           ${itemBadge(item.type)} ${statusBadge(item.status)}
@@ -465,10 +465,15 @@ Screens['create-post'] = (ctx) => {
       </div>
       <div class="form-group">
         <label class="form-label">${Lang.t('photoOptional')}</label>
-        <div class="photo-upload" onclick="App.toast(Lang.t('photoPickerSim'))">
+        <input type="file" id="post-photo-input" accept="image/*" style="display:none" />
+        <div class="photo-upload" id="post-photo-trigger">
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="var(--text-tertiary)" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
           <span>${Lang.t('tapAddPhoto')}</span>
         </div>
+        <div id="post-photo-preview-wrap" class="photo-preview-wrap" style="display:none">
+          <img id="post-photo-preview" class="photo-preview-image" alt="${Lang.t('photoPreviewAlt')}" />
+        </div>
+        <div class="form-hint" id="post-photo-status"></div>
       </div>
       ${isFound ? `
       <div class="section-divider"></div>
@@ -500,9 +505,47 @@ Screens['create-post'] = (ctx) => {
     });
   }
 
+  let photoUrl = '';
+  let photoUploading = false;
+  let photoPreviewObjectUrl = '';
+  const photoInput = s.querySelector('#post-photo-input');
+  const photoTrigger = s.querySelector('#post-photo-trigger');
+  const photoStatus = s.querySelector('#post-photo-status');
+  const photoPreviewWrap = s.querySelector('#post-photo-preview-wrap');
+  const photoPreview = s.querySelector('#post-photo-preview');
+  photoTrigger?.addEventListener('click', () => photoInput?.click());
+  photoInput?.addEventListener('change', async () => {
+    const file = photoInput.files?.[0];
+    if (!file) return;
+    if (!file.type || !file.type.startsWith('image/')) {
+      App.toast(Lang.t('photoInvalidType'));
+      return;
+    }
+    if (photoPreviewObjectUrl) URL.revokeObjectURL(photoPreviewObjectUrl);
+    photoPreviewObjectUrl = URL.createObjectURL(file);
+    photoPreview.src = photoPreviewObjectUrl;
+    photoPreviewWrap.style.display = 'block';
+    photoStatus.textContent = Lang.t('photoUploading');
+    photoUploading = true;
+    photoUrl = '';
+    try {
+      const uploaded = await window.Api.uploadItemPhoto(file);
+      photoUrl = uploaded.publicUrl;
+      photoStatus.textContent = Lang.t('photoReady');
+    } catch (e) {
+      photoPreviewWrap.style.display = 'none';
+      photoStatus.textContent =
+        e?.code === 'storage_not_configured' ? Lang.t('photoUploadConfigMissing') : Lang.t('photoUploadFailed');
+      App.toast(photoStatus.textContent);
+    } finally {
+      photoUploading = false;
+    }
+  });
+
   let postSubmitBusy = false;
   s.querySelector('#post-submit-btn').addEventListener('click', async () => {
     if (postSubmitBusy) return;
+    if (photoUploading) { App.toast(Lang.t('photoUploading')); return; }
     const title = s.querySelector('#post-title').value;
     const cat = s.querySelector('#post-cat').value;
     const loc = s.querySelector('#post-loc').value;
@@ -523,6 +566,7 @@ Screens['create-post'] = (ctx) => {
       title: title.trim(),
       category: cat,
       description: s.querySelector('#post-desc').value.trim() || 'No description.',
+      photoUrl: photoUrl || undefined,
       location: loc,
       date: s.querySelector('#post-date').value,
       time: s.querySelector('#post-time').value,

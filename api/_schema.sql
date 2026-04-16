@@ -31,6 +31,7 @@ create table if not exists items (
   title text not null,
   category text not null,
   description text not null,
+  photo_url text,
   location text not null,
   date text not null,
   time text default '',

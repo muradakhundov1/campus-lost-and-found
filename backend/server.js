@@ -194,6 +194,9 @@ app.get('/api/me', requireAuth, (req, res) => res.json({ user: req.user }));
 // ===== Config used by frontend =====
 app.get('/api/config', (req, res) => {
   // Branding is handled in frontend separately; this is data/config for UI.
+  const storageUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
+  const storageAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY || '';
+  const storageBucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || process.env.SUPABASE_STORAGE_BUCKET || 'item-photos';
   res.json({
     categories: [
       'Documents / ID Cards',
@@ -224,7 +227,15 @@ app.get('/api/config', (req, res) => {
       'What identifying feature does it have?',
       'Can you describe any writing or labels on it?',
       'What model or size is it?'
-    ]
+    ],
+    storage:
+      storageUrl && storageAnonKey
+        ? {
+            url: storageUrl,
+            anonKey: storageAnonKey,
+            bucket: storageBucket
+          }
+        : null
   });
 });
 
@@ -307,6 +318,7 @@ app.post('/api/items', requireAuth, (req, res) => {
       title: z.string().min(1),
       category: z.string().min(1),
       description: z.string().min(1),
+      photoUrl: z.string().url().optional(),
       location: z.string().min(1),
       date: z.string().min(1),
       time: z.string().optional(),
@@ -324,14 +336,15 @@ app.post('/api/items', requireAuth, (req, res) => {
   })();
   const created = nowIso();
   db.prepare(
-    `INSERT INTO items (id,type,title,category,description,location,date,time,status,poster_id,poster_name,claim_count,resolved_at,created_at,updated_at)
-     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    `INSERT INTO items (id,type,title,category,description,photo_url,location,date,time,status,poster_id,poster_name,claim_count,resolved_at,created_at,updated_at)
+     VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
   ).run(
     itemId,
     it.type,
     it.title,
     it.category,
     it.description,
+    it.photoUrl || null,
     it.location,
     it.date,
     it.time || '',

@@ -8,6 +8,10 @@ function getDb() {
   if (!db) {
     db = new Database(DB_PATH);
     db.pragma('foreign_keys = ON');
+    const itemCols = db.prepare("PRAGMA table_info('items')").all();
+    if (Array.isArray(itemCols) && !itemCols.some((c) => c.name === 'photo_url')) {
+      db.prepare('ALTER TABLE items ADD COLUMN photo_url TEXT').run();
+    }
   }
   return db;
 }

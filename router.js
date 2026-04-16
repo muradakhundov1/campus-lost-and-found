@@ -21,6 +21,7 @@ const App = {
     const tok = window.Api.token.get();
     if (!tok) {
       App._configLoaded = false;
+      DB.storage = null;
       DB.claims = [];
       DB.messages = {};
       DB.notifications = [];
@@ -102,6 +103,7 @@ const App = {
           DB.categories = cfg.categories || DB.categories;
           DB.locations = cfg.locations || DB.locations;
           DB.predefinedQuestions = cfg.predefinedQuestions || DB.predefinedQuestions;
+          DB.storage = cfg.storage || null;
           App._configLoaded = true;
         }
         if (Array.isArray(itemsRes.items)) DB.items = itemsRes.items;
@@ -331,6 +333,7 @@ const App = {
   logout() {
     window.Api?.token?.set?.('');
     DB.currentUser = null;
+    DB.storage = null;
     DB.claims = [];
     DB.messages = {};
     DB.notifications = [];
@@ -409,7 +412,7 @@ function itemCardHTML(item, onclick) {
   const poster = DB.getUserById(item.posterId);
   return `<div class="item-card" onclick="${onclick || `App.navigate('item-detail', {itemId:'${item.id}'})`}">
     <div class="item-card-header">
-      <div class="item-photo">${typeof categoryIcon === 'function' ? categoryIcon(item.category) : ''}</div>
+      <div class="item-photo">${item.photoUrl ? `<img src="${item.photoUrl}" alt="${item.title}">` : (typeof categoryIcon === 'function' ? categoryIcon(item.category) : '')}</div>
       <div class="item-card-info">
         <div class="item-card-title">${item.title}</div>
         <div class="item-card-meta">

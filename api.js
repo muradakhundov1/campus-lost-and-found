@@ -13,6 +13,14 @@ function resolveApiBase() {
 const API_BASE = resolveApiBase();
 const AUTH_TOKEN_KEY = 'bhos.authToken';
 
+function encodeStoragePath(path) {
+  return String(path || '')
+    .split('/')
+    .filter(Boolean)
+    .map((part) => encodeURIComponent(part))
+    .join('/');
+}
+
 function getToken() {
   try { return localStorage.getItem(AUTH_TOKEN_KEY) || ''; } catch { return ''; }
 }
@@ -114,6 +122,7 @@ function normalizeItem(raw) {
     title: raw.title,
     category: raw.category,
     description: raw.description,
+    photoUrl: raw.photoUrl ?? raw.photo_url ?? null,
     location: raw.location,
     date: raw.date,
     time: raw.time ?? '',
@@ -187,6 +196,54 @@ const Api = {
   async config() {
     const out = await apiFetch('/api/config', { method: 'GET', auth: false });
     return out;
+  },
+
+  async uploadItemPhoto(file) {
+    if (!(file instanceof File)) {
+      const err = new Error('invalid_file');
+      err.code = 'invalid_file';
+      throw err;
+    }
+    if (!file.type || !file.type.startsWith('image/')) {
+      const err = new Error('invalid_file_type');
+      err.code = 'invalid_file_type';
+      throw err;
+    }
+    const storage = typeof DB !== 'undefined' ? DB.storage : window.DB?.storage;
+    if (!storage?.url || !storage?.anonKey || !storage?.bucket) {
+      const err = new Error('storage_not_configured');
+      err.code = 'storage_not_configured';
+      throw err;
+    }
+    const rawExt = (file.name.split('.').pop() || '').toLowerCase();
+    const safeExt = /^[a-z0-9]{1,8}$/.test(rawExt) ? rawExt : 'jpg';
+    const filePath = `items/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${safeExt}`;
+    const bucketPath = `${encodeURIComponent(storage.bucket)}/${encodeStoragePath(filePath)}`;
+    const res = await fetch(`${storage.url}/storage/v1/object/${bucketPath}`, {
+      method: 'POST',
+      headers: {
+        apikey: storage.anonKey,
+        Authorization: `Bearer ${storage.anonKey}`,
+        'x-upsert': 'false',
+        'Content-Type': file.type || 'application/octet-stream'
+      },
+      body: file
+    });
+    if (!res.ok) {
+      let data = null;
+      try {
+        data = await res.json();
+      } catch {}
+      const err = new Error(data?.message || data?.error || 'upload_failed');
+      err.code = 'upload_failed';
+      err.status = res.status;
+      err.data = data;
+      throw err;
+    }
+    return {
+      path: filePath,
+      publicUrl: `${storage.url}/storage/v1/object/public/${encodeURIComponent(storage.bucket)}/${encodeStoragePath(filePath)}`
+    };
   },
 
   async itemsList() {
