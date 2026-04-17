@@ -142,6 +142,8 @@ Screens.login = () => {
       } catch (e) {
         if (e.message === 'invalid_json' || e.message === 'empty_response' || e.code === 'bad_auth_payload') {
           App.toast(Lang.t('toastRegBadResponse'));
+        } else if (e?.data?.error) {
+          App.toast(Lang.t('toastSignInFailedWithCode', { code: e.data.error }));
         } else {
           App.toast(Lang.t('toastSignInFailed'));
         }
