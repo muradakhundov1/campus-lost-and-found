@@ -76,7 +76,7 @@ module.exports = async function handler(req, res) {
 
   const rawName = String(req.headers['x-filename'] || '').trim();
   const rawExt = (rawName.split('.').pop() || '').toLowerCase();
-  const safeExt = /^[a-z0-9]{1,8}$/.test(rawExt) ? rawExt : (contentType.split('/')[1] || 'jpg');
+  const safeExt = /^[a-z0-9]{1,8}$/.test(rawExt) ? rawExt : contentType.split('/')[1] || 'jpg';
   const filePath = `items/${Date.now()}-${Math.random().toString(36).slice(2, 10)}.${safeExt}`;
 
   const objPath = `${encodeURIComponent(bucket)}/${encodeStoragePath(filePath)}`;

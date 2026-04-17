@@ -33,3 +33,4 @@ function mapItem(row) {
 }
 
 module.exports = { mapItem };
+

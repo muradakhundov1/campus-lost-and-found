@@ -60,30 +60,28 @@ module.exports = async function handler(req, res) {
     if (!isParticipant) return json(res, 403, { error: 'forbidden' });
 
     if (parsed.data.action === 'schedule') {
-      await query(
-        'update claims set handover_status = $1, meeting_point = $2, meeting_time = $3 where id = $4',
-        ['Scheduled', scheduleMp, scheduleMt, claimId]
-      );
-    } else {
-      await query(
-        "update claims set handover_status = 'Completed', status = 'Resolved' where id = $1",
-        [claimId]
-      );
-      await query("update items set status = 'Resolved / Returned', resolved_at = $1, updated_at = now() where id = $2", [
-        new Date().toISOString().slice(0, 10),
-        item.id
+      await query('update claims set handover_status = $1, meeting_point = $2, meeting_time = $3 where id = $4', [
+        'Scheduled',
+        scheduleMp,
+        scheduleMt,
+        claimId
       ]);
+    } else {
+      await query("update claims set handover_status = 'Completed', status = 'Resolved' where id = $1", [claimId]);
+      await query("update items set status = 'Resolved', resolved_at = now(), updated_at = now() where id = $1", [item.id]);
+      await query('update users set resolved_count = resolved_count + 1 where id = $1', [item.poster_id]);
     }
 
-    const crow = (await query('select * from claims where id = $1', [claimId])).rows[0];
+    const updatedClaimRow = (await query('select * from claims where id = $1', [claimId])).rows[0];
     const ans = await query('select question_id, question, answer from claim_answers where claim_id = $1 order by id', [
       claimId
     ]);
-    const irow = (await query('select * from items where id = $1', [item.id])).rows[0];
+    const updatedItemRow = (await query('select * from items where id = $1', [item.id])).rows[0];
 
-    return json(res, 200, { claim: mapClaimRow(crow, ans.rows), item: mapItem(irow) });
+    return json(res, 200, { ok: true, claim: mapClaimRow(updatedClaimRow, ans.rows), item: mapItem(updatedItemRow) });
   } catch (e) {
     console.error('[claims/:id/handover]', e);
     return json(res, 500, { error: 'server_error' });
   }
 };
+

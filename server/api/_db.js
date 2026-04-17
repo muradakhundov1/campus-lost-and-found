@@ -6,8 +6,7 @@ let pool;
 function connectionString() {
   const raw = process.env.DATABASE_URL;
   if (!raw) return raw;
-  const isTransactionPooler =
-    /pooler\.supabase\.com/.test(raw) || /:6543(\/|\?|$)/.test(raw);
+  const isTransactionPooler = /pooler\.supabase\.com/.test(raw) || /:6543(\/|\?|$)/.test(raw);
   if (!isTransactionPooler || raw.includes('pgbouncer=true')) return raw;
   return raw + (raw.includes('?') ? '&' : '?') + 'pgbouncer=true';
 }

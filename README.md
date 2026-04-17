@@ -1,10 +1,27 @@
-## Campus Lost & Found (local full-stack)
+## Campus Lost & Found
 
-This project is a static frontend (`index.html` + JS) plus a local backend (Express + SQLite) so the app can be “legit” (persistent data + real API).
+A simple **campus lost & found web app** where students/staff can post lost or found items, search/filter listings, and safely resolve returns through a claim + verification flow.
 
-### Prereqs
+### Product features
 
-- Node.js (you have it)
+- **Post lost/found items**: title, description, category, location, date/time, optional photo link.
+- **Browse + search**: filter by type/category/location/status and full-text search.
+- **Claims workflow**: request an item by answering verification questions, then get approved/rejected by the poster/admin.
+- **Chat after approval**: once approved, a claim chat opens to coordinate handover.
+- **Handover tracking**: schedule a meeting point/time and mark a claim as completed.
+- **Admin tools (basic)**: reports, admin actions log, and simple dashboard stats.
+
+### Tech overview (how it’s built)
+
+- **Frontend**: static files served from the repo root (via `http-server` in local dev).
+- **Local API**: Express + SQLite (`backend/dev.sqlite3`) for fast local development.
+- **Deployed API (Vercel)**: Serverless `/api/*` routes backed by **Postgres** via `DATABASE_URL` (recommended: Supabase).
+
+## Run locally (recommended for development)
+
+### Prerequisites
+
+- Node.js 18+ (any recent Node should work)
 
 ### Install
 
@@ -12,39 +29,61 @@ This project is a static frontend (`index.html` + JS) plus a local backend (Expr
 npm install
 ```
 
-### Reset/seed the database
+### Reset / seed the local database (SQLite)
+
+This recreates `backend/dev.sqlite3` using `backend/schema.sql`.
 
 ```bash
 npm run db:reset
 ```
 
-### Run backend + frontend together
+### Start the app (frontend + API)
 
 ```bash
 npm run dev
 ```
 
-- Frontend: `http://localhost:5173`
-- API: `http://localhost:8787` (health: `http://localhost:8787/api/health`)
+- **Frontend**: `http://localhost:5173`
+- **API**: `http://localhost:8787` (health: `http://localhost:8787/api/health`)
 
-## Deploy (free demo) — Vercel + Supabase
+## Deploy on Vercel (Postgres-backed)
 
-For a teacher demo + a few students for a day, you can keep this on free tiers.
+### One-click deploy link
 
-### 1) Create a Supabase project (free)
+Use this button to create a new Vercel project from this repo:
 
-- In Supabase, open the **SQL editor** and run the schema in `api/_schema.sql`.
-- Copy your **Database connection string** (it becomes `DATABASE_URL`).
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmuradakhundov1%2Fcampus-lost-and-found.git)
 
-### 2) Deploy to Vercel
+### Step-by-step (Vercel + Supabase)
 
-- Import this repo in Vercel.
-- Add an Environment Variable:
-  - `DATABASE_URL`: your Supabase Postgres connection string
+- **1) Create a Supabase project**
+  - In Supabase → **SQL Editor**, run the schema in `api/_schema.sql`.
+  - Copy the **Postgres connection string** for your project.
 
-### 3) Frontend API base
+- **2) Configure Vercel environment variables**
+  - In Vercel → Project → Settings → Environment Variables, set:
+    - **`DATABASE_URL`**: your Supabase Postgres connection string
 
-`api.js` automatically uses:
-- local dev: `http://localhost:8787`
-- deployed: same-origin `/api` on Vercel
+- **3) Deploy**
+  - Import the repo (or use the deploy button) and deploy.
+  - Your deployed frontend will call the API via **same-origin** `/api/*`.
+
+### Optional (image uploads via Supabase Storage)
+
+The app can upload item photos to Supabase Storage if you set these variables (locally or on Vercel):
+
+- **`SUPABASE_URL`**
+- **`SUPABASE_STORAGE_BUCKET`** (default: `item-photos`)
+- **`SUPABASE_SERVICE_ROLE_KEY`** (required for the upload endpoint)
+- **`SUPABASE_ANON_KEY`** (used by the frontend config endpoint)
+
+If you don’t set these, the app still works; photo upload will just be unavailable.
+
+## API base URL behavior
+
+The frontend is set up to use:
+
+- **Local dev**: `http://localhost:8787`
+- **Vercel deploy**: same-origin `/api`
+
 

@@ -20,3 +20,4 @@ module.exports = async function handler(req, res) {
     return json(res, 500, { error: 'server_error' });
   }
 };
+

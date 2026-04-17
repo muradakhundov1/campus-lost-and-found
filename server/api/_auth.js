@@ -26,3 +26,4 @@ async function optionalUserId(req) {
 }
 
 module.exports = { requireUserId, optionalUserId };
+

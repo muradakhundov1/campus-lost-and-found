@@ -41,10 +41,9 @@ module.exports = async function handler(req, res) {
       const r = await query('select * from claims where item_id = $1 order by submitted_at desc', [itemId]);
       const claims = [];
       for (const row of r.rows) {
-        const a = await query(
-          'select question_id, question, answer from claim_answers where claim_id = $1 order by id',
-          [row.id]
-        );
+        const a = await query('select question_id, question, answer from claim_answers where claim_id = $1 order by id', [
+          row.id
+        ]);
         claims.push(mapClaimRow(row, a.rows));
       }
       return json(res, 200, { claims });
@@ -71,12 +70,8 @@ module.exports = async function handler(req, res) {
         .union([z.string(), z.number(), z.null()])
         .optional()
         .transform((v) => (v == null || v === '' ? undefined : String(v))),
-      question: z
-        .union([z.string(), z.number()])
-        .transform((v) => String(v).trim() || '(question)'),
-      answer: z
-        .union([z.string(), z.number()])
-        .transform((v) => String(v).trim() || '(no answer)')
+      question: z.union([z.string(), z.number()]).transform((v) => String(v).trim() || '(question)'),
+      answer: z.union([z.string(), z.number()]).transform((v) => String(v).trim() || '(no answer)')
     });
 
     const parsed = z
@@ -106,10 +101,12 @@ module.exports = async function handler(req, res) {
       );
 
       for (const a of parsed.data.answers || []) {
-        await query(
-          'insert into claim_answers (claim_id, question_id, question, answer) values ($1,$2,$3,$4)',
-          [claimId, a.questionId || null, a.question, a.answer]
-        );
+        await query('insert into claim_answers (claim_id, question_id, question, answer) values ($1,$2,$3,$4)', [
+          claimId,
+          a.questionId || null,
+          a.question,
+          a.answer
+        ]);
       }
 
       const newClaimCount = (item.claim_count || 0) + 1;
@@ -153,3 +150,4 @@ module.exports = async function handler(req, res) {
 
   return json(res, 405, { error: 'method_not_allowed' });
 };
+

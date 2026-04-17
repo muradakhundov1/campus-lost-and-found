@@ -13,10 +13,7 @@ module.exports = async function handler(req, res) {
 
   if (req.method === 'GET') {
     try {
-      const r = await query(
-        'select * from notifications where user_id = $1 order by created_at desc limit 200',
-        [userId]
-      );
+      const r = await query('select * from notifications where user_id = $1 order by created_at desc limit 200', [userId]);
       return json(res, 200, { notifications: r.rows.map(mapNotificationRow) });
     } catch (e) {
       console.error('[notifications GET]', e);
@@ -45,3 +42,4 @@ module.exports = async function handler(req, res) {
 
   return json(res, 405, { error: 'method_not_allowed' });
 };
+

@@ -16,9 +16,7 @@ module.exports = async function handler(req, res) {
     return json(res, 400, { error: 'invalid_json' });
   }
 
-  const parsed = z
-    .object({ identifier: z.string().min(1), password: z.string().min(1) })
-    .safeParse(body);
+  const parsed = z.object({ identifier: z.string().min(1), password: z.string().min(1) }).safeParse(body);
   if (!parsed.success) return json(res, 400, { error: 'invalid_request' });
 
   const { identifier, password } = parsed.data;

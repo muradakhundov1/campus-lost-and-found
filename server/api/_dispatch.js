@@ -1,6 +1,6 @@
 /**
  * Single entry dispatcher for all /api/* routes (Vercel Hobby: one serverless function).
- * Handlers live in api/_*.js (underscore = not deployed as separate functions).
+ * Handlers live in server/api/_*.js (underscore = internal modules).
  */
 
 function parseSegments(req) {
@@ -34,7 +34,7 @@ module.exports = async function dispatch(req, res) {
   const method = req.method || 'GET';
   const segments = parseSegments(req);
 
-  // Visible in Vercel → Project → Logs (filter: [api]). Dedicated routes under api/items/[id]/ bypass this file.
+  // Visible in Vercel → Project → Logs (filter: [api]).
   if (method !== 'OPTIONS') {
     const path = segments.length ? `/${segments.join('/')}` : '(no match)';
     console.log('[api]', method, path, req.url ? `url=${String(req.url).slice(0, 160)}` : '');
@@ -130,3 +130,4 @@ module.exports = async function dispatch(req, res) {
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
   return res.end(JSON.stringify({ error: 'not_found' }));
 };
+

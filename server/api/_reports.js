@@ -59,3 +59,4 @@ module.exports = async function handler(req, res) {
 
   return json(res, 405, { error: 'method_not_allowed' });
 };
+

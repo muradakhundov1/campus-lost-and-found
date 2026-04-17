@@ -61,3 +61,4 @@ function mapReportRow(row) {
 }
 
 module.exports = { mapClaimRow, mapMessageRow, mapNotificationRow, mapReportRow };
+

@@ -1,2 +1,2 @@
 /** Single Vercel serverless function: routes all /api/* requests. */
-module.exports = require('./_dispatch');
+module.exports = require('../server/api/_dispatch');

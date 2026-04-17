@@ -1,7 +1,6 @@
 const { query } = require('./_db');
 const { json } = require('./_util');
 const { requireUserId } = require('./_auth');
-const { mapClaimRow } = require('./_claimMap');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -12,25 +11,23 @@ module.exports = async function handler(req, res) {
   const userId = await requireUserId(req, res);
   if (!userId) return;
 
+  const u = await query('select role from users where id = $1', [userId]);
+  if (u.rows[0]?.role !== 'admin') return json(res, 403, { error: 'forbidden' });
+
   try {
-    const r = await query(
-      `select c.* from claims c
-       join items i on i.id = c.item_id
-       where c.claimant_id = $1 or i.poster_id = $1
-       order by c.submitted_at desc`,
-      [userId]
-    );
-    const claims = [];
-    for (const row of r.rows) {
-      const a = await query(
-        'select question_id, question, answer from claim_answers where claim_id = $1 order by id',
-        [row.id]
-      );
-      claims.push(mapClaimRow(row, a.rows));
-    }
-    return json(res, 200, { claims });
+    const r = await query('select id, action, target, note, admin_id, at from admin_log order by at desc limit 100');
+    const logs = r.rows.map((row) => ({
+      id: row.id,
+      action: row.action,
+      target: row.target,
+      note: row.note,
+      adminId: row.admin_id,
+      at: row.at ? new Date(row.at).toISOString() : ''
+    }));
+    return json(res, 200, { adminLog: logs });
   } catch (e) {
-    console.error('[claims GET]', e);
+    console.error('[admin/log]', e);
     return json(res, 500, { error: 'server_error' });
   }
 };
+
