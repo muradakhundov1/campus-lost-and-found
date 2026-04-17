@@ -762,7 +762,12 @@ Screens['admin-mod'] = (ctx) => {
       App.toast(Lang.t('actionTaken', { action: actionLabel }));
       setTimeout(() => App.back(), 800);
     } catch (e) {
-      App.toast(Lang.t('toastApiGeneric'));
+      if (e?.status === 401) App.toast(Lang.t('signInShort'));
+      else if (e?.status === 403 || e?.data?.error === 'forbidden') App.toast(Lang.t('toastAdminForbidden'));
+      else {
+        const code = e?.data?.error || e?.message || 'error';
+        App.toast(Lang.t('toastAdminFailedWithCode', { code }));
+      }
     }
   };
   return s;
