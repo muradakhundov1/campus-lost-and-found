@@ -17,6 +17,14 @@ A simple **campus lost & found web app** where students/staff can post lost or f
 - **Local API**: Express + SQLite (`backend/dev.sqlite3`) for fast local development.
 - **Deployed API (Vercel)**: Serverless `/api/*` routes backed by **Postgres** via `DATABASE_URL` (recommended: Supabase).
 
+
+## Vercel 
+
+Use this link to enter the Vercel deployment:
+
+https://campus-lost-and-found-narmins-projects-7a0748c4.vercel.app
+
+
 ## Run locally (recommended for development)
 
 ### Prerequisites
@@ -45,10 +53,4 @@ npm run dev
 
 - **Frontend**: `http://localhost:5173`
 - **API**: `http://localhost:8787` (health: `http://localhost:8787/api/health`)
-
-## Vercel 
-
-Use this link to enter the Vercel deployment:
-
-https://campus-lost-and-found-narmins-projects-7a0748c4.vercel.app
 
