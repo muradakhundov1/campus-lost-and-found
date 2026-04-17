@@ -764,6 +764,7 @@ Screens['admin-mod'] = (ctx) => {
     } catch (e) {
       if (e?.status === 401) App.toast(Lang.t('signInShort'));
       else if (e?.status === 403 || e?.data?.error === 'forbidden') App.toast(Lang.t('toastAdminForbidden'));
+      else if (e?.code === 'html_response') App.toast(Lang.t('toastApiHtmlResponse'));
       else {
         const code = e?.data?.error || e?.message || 'error';
         App.toast(Lang.t('toastAdminFailedWithCode', { code }));

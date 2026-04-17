@@ -53,6 +53,11 @@ async function apiFetch(path, { method = 'GET', body, auth = true } = {}) {
       const err = new Error('invalid_json');
       err.status = res.status;
       err.hint = 'not_json';
+      const t = String(text || '');
+      err.snippet = t.slice(0, 180);
+      if (/^\s*<!doctype html/i.test(t) || /<html/i.test(t)) {
+        err.code = 'html_response';
+      }
       throw err;
     }
   } else if (res.ok && !text) {

@@ -360,6 +360,8 @@ const I18N = {
     toastRegDb: 'Registration failed. Check that the database is set up, then try again.',
     toastApiGeneric:
       'Could not complete the request. Check your connection and try again.',
+    toastApiHtmlResponse:
+      'Server returned an HTML page instead of JSON (check Vercel Deployment Protection / wrong URL).',
     toastClaimFailed: 'Could not submit your claim. Please try again.',
     toastClaimOwnItem: 'You cannot claim a response on your own post.',
     toastClaimNotFound: 'This item could not be found. It may have been removed.',
@@ -729,6 +731,8 @@ const I18N = {
     toastRegDb: 'Qeydiyyat alınmadı. Verilənlər bazasının qurulduğunu yoxlayın.',
     toastApiGeneric:
       'Sorğu tamamlanmadı. İnternet bağlantısını yoxlayın və yenidən cəhd edin.',
+    toastApiHtmlResponse:
+      'Server JSON əvəzinə HTML qaytardı (Vercel Deployment Protection / yanlış URL ola bilər).',
     toastClaimFailed: 'Tələb təqdim olunmadı. Yenidən cəhd edin.',
     toastClaimOwnItem: 'Öz elanınıza cavab verə bilməzsiniz.',
     toastClaimNotFound: 'Elan tapılmadı və ya silinib.',
